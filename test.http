@@ -1,0 +1,433 @@
+### ==========================================
+### HRIS COMPREHENSIVE API TEST COLLECTION
+### ==========================================
+### Server: http://localhost:8081
+### Default Credentials: employee@hris.com / admin123
+
+### ==========================================
+### AUTHENTICATION TESTS
+### ==========================================
+
+### 1. Employee Login - SUCCESS ✅
+POST http://localhost:8081/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "employee@hris.com",
+  "password": "admin123"
+}
+
+### 2. Admin Login - SUCCESS ✅
+POST http://localhost:8081/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@hris.com",
+  "password": "admin123"
+}
+
+### 3. HR Login - SUCCESS ✅
+POST http://localhost:8081/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "hr@hris.com",
+  "password": "admin123"
+}
+
+### 4. Invalid Login - FAILURE ❌
+POST http://localhost:8081/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "invalid@hris.com",
+  "password": "wrongpassword"
+}
+
+### 5. Get Current User Info - SUCCESS ✅
+GET http://localhost:8081/api/auth/me
+Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJlbXBsb3llZUBocmlzLmNvbSIsImVtcGxveWVlSWQiOjQsImVtcGxveWVlQ29kZSI6IkVNUDAwMSIsImlhdCI6MTc1OTMyNDc3NCwiZXhwIjoxNzU5NDExMTc0fQ.5zev2vf6hxc6Z5yHcZqoh9OYhMRZClbeTXl0Bb3Cg9gN869TGV52lMGexB-8aCmP
+
+### ==========================================
+### EMPLOYEE MANAGEMENT TESTS
+### ==========================================
+
+### 7. Get All Active Employees - SUCCESS ✅
+GET http://localhost:8081/api/employees
+Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJlbXBsb3llZUBocmlzLmNvbSIsImVtcGxveWVlSWQiOjQsImVtcGxveWVlQ29kZSI6IkVNUDAwMSIsImlhdCI6MTc1OTMyNDc3NCwiZXhwIjoxNzU5NDExMTc0fQ.5zev2vf6hxc6Z5yHcZqoh9OYhMRZClbeTXl0Bb3Cg9gN869TGV52lMGexB-8aCmP
+
+### 8. Get Employee by ID - SUCCESS ✅
+GET http://localhost:8081/api/employees/4
+Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJlbXBsb3llZUBocmlzLmNvbSIsImVtcGxveWVlSWQiOjQsImVtcGxveWVlQ29kZSI6IkVNUDAwMSIsImlhdCI6MTc1OTMyNDc3NCwiZXhwIjoxNzU5NDExMTc0fQ.5zev2vf6hxc6Z5yHcZqoh9OYhMRZClbeTXl0Bb3Cg9gN869TGV52lMGexB-8aCmP
+
+### 9. Get Employee Subordinates (Supervisor View) - SUCCESS ✅
+GET http://localhost:8081/api/employees/subordinates/2
+Authorization: Bearer {{supervisor_token}}
+
+### 10. Create New Employee - SUCCESS ✅
+POST http://localhost:8081/api/employees
+Content-Type: application/json
+Authorization: Bearer {{admin_token}}
+
+{
+  "firstName": "Alice",
+  "lastName": "Johnson",
+  "email": "alice.johnson@example.com",
+  "phoneNumber": "+6281234567890",
+  "departmentId": 1,
+  "positionId": 1,
+  "supervisorId": 2,
+  "hireDate": "2025-10-01",
+  "annualLeaveBalance": 12,
+  "sickLeaveBalance": 10,
+  "faceImage": ""
+}
+
+### 11. Update Employee Information - SUCCESS ✅
+PUT http://localhost:8081/api/employees/4
+Content-Type: application/json
+Authorization: Bearer {{admin_token}}
+
+{
+  "firstName": "Regular",
+  "lastName": "Employee Updated",
+  "email": "employee.updated@hris.com",
+  "phoneNumber": "+6281234567891",
+  "departmentId": 1,
+  "positionId": 1,
+  "supervisorId": 2,
+  "hireDate": "2025-10-01",
+  "annualLeaveBalance": 15,
+  "sickLeaveBalance": 12,
+  "faceImage": ""
+}
+
+### 12. Deactivate Employee - SUCCESS ✅
+POST http://localhost:8081/api/employees/5/deactivate
+Authorization: Bearer {{admin_token}}
+
+### 13. Activate Employee - SUCCESS ✅
+POST http://localhost:8081/api/employees/5/activate
+Authorization: Bearer {{admin_token}}
+
+### 14. Search Employees by Name - SUCCESS ✅
+GET http://localhost:8081/api/employees/search?keyword=Regular
+Authorization: Bearer {{employee_token}}
+
+### ==========================================
+### ATTENDANCE MANAGEMENT TESTS
+### ==========================================
+
+### 15. Get Today's Attendance - SUCCESS ✅
+GET http://localhost:8081/api/attendance/today
+Authorization: Bearer {{employee_token}}
+
+### 16. Get Attendance Status - SUCCESS ✅
+GET http://localhost:8081/api/attendance/status
+Authorization: Bearer {{employee_token}}
+
+### 17. Clock In with Location - SUCCESS ✅
+POST http://localhost:8081/api/attendance/check-in
+Content-Type: application/json
+Authorization: Bearer {{employee_token}}
+
+{
+  "latitude": -6.2088,
+  "longitude": 106.8456,
+  "locationAddress": "GSJ Office - Jakarta",
+  "notes": "Morning check-in",
+  "faceImage": ""
+}
+
+### 18. Clock Out - SUCCESS ✅
+POST http://localhost:8081/api/attendance/check-out
+Authorization: Bearer {{employee_token}}
+
+### 19. Get Attendance History (30 days) - SUCCESS ✅
+GET http://localhost:8081/api/attendance/history?days=30
+Authorization: Bearer {{employee_token}}
+
+### 20. Get Attendance History (7 days) - SUCCESS ✅
+GET http://localhost:8081/api/attendance/history?days=7
+Authorization: Bearer {{employee_token}}
+
+### 21. Get All Attendance Records (Admin) - SUCCESS ✅
+GET http://localhost:8081/api/attendance/admin/all
+Authorization: Bearer {{admin_token}}
+
+### 22. Get Attendance by Date Range (Admin) - SUCCESS ✅
+GET http://localhost:8081/api/attendance/admin/all?date=2025-10-01
+Authorization: Bearer {{admin_token}}
+
+### 23. Clock In Outside Geofence - SHOULD FAIL ❌
+POST http://localhost:8081/api/attendance/check-in
+Content-Type: application/json
+Authorization: Bearer {{employee_token}}
+
+{
+  "latitude": -7.2575,
+  "longitude": 112.7521,
+  "locationAddress": "Surabaya Office",
+  "notes": "Testing geofence violation"
+}
+
+### 24. Double Clock In Attempt - SHOULD FAIL ❌
+POST http://localhost:8081/api/attendance/check-in
+Content-Type: application/json
+Authorization: Bearer {{employee_token}}
+
+{
+  "latitude": -6.2088,
+  "longitude": 106.8456,
+  "locationAddress": "GSJ Office - Jakarta",
+  "notes": "Second check-in attempt"
+}
+
+### ==========================================
+### LEAVE MANAGEMENT TESTS
+### ==========================================
+
+### 25. Get Leave Requests - SUCCESS ✅
+GET http://localhost:8081/api/leave
+Authorization: Bearer {{employee_token}}
+
+### 26. Submit Annual Leave Request - SUCCESS ✅
+POST http://localhost:8081/api/leave
+Content-Type: application/json
+Authorization: Bearer {{employee_token}}
+
+{
+  "startDate": "2025-10-15",
+  "endDate": "2025-10-17",
+  "type": "annual",
+  "reason": "Family vacation to Bali"
+}
+
+### 27. Submit Sick Leave Request - SUCCESS ✅
+POST http://localhost:8081/api/leave
+Content-Type: application/json
+Authorization: Bearer {{employee_token}}
+
+{
+  "startDate": "2025-10-05",
+  "endDate": "2025-10-05",
+  "type": "sick",
+  "reason": "Flu and fever"
+}
+
+### 28. Get Leave Balance - SUCCESS ✅
+GET http://localhost:8081/api/leave/balance
+Authorization: Bearer {{employee_token}}
+
+### 29. Get Leave History - SUCCESS ✅
+GET http://localhost:8081/api/leave/history
+Authorization: Bearer {{employee_token}}
+
+### 30. Approve Leave Request (Supervisor/HR) - SUCCESS ✅
+PUT http://localhost:8081/api/leave/1/approve
+Content-Type: application/json
+Authorization: Bearer {{supervisor_token}}
+
+{
+  "status": "approved",
+  "approverComments": "Approved for family vacation. Have a great trip!"
+}
+
+### 31. Reject Leave Request (Supervisor/HR) - SUCCESS ✅
+PUT http://localhost:8081/api/leave/2/reject
+Content-Type: application/json
+Authorization: Bearer {{supervisor_token}}
+
+{
+  "status": "rejected",
+  "approverComments": "Insufficient leave balance. Please check leave balance before submitting."
+}
+
+### 32. Cancel Leave Request - SUCCESS ✅
+PUT http://localhost:8081/api/leave/3/cancel
+Authorization: Bearer {{employee_token}}
+
+### 33. Get Pending Leave Approvals (Supervisor) - SUCCESS ✅
+GET http://localhost:8081/api/leave/pending-approvals
+Authorization: Bearer {{supervisor_token}}
+
+### ==========================================
+### PAYROLL MANAGEMENT TESTS
+### ==========================================
+
+### 34. Get Payroll Records - SUCCESS ✅
+GET http://localhost:8081/api/payroll
+Authorization: Bearer {{employee_token}}
+
+### 35. Generate Monthly Payroll - SUCCESS ✅
+POST http://localhost:8081/api/payroll/generate
+Content-Type: application/json
+Authorization: Bearer {{admin_token}}
+
+{
+  "employeeId": 4,
+  "month": "2025-10",
+  "overtimeHours": 8,
+  "bonus": 500000,
+  "deductions": 200000
+}
+
+### 36. Get Payroll by Month - SUCCESS ✅
+GET http://localhost:8081/api/payroll/month/2025-10
+Authorization: Bearer {{employee_token}}
+
+### 37. Get Payroll by Employee - SUCCESS ✅
+GET http://localhost:8081/api/payroll/employee/4
+Authorization: Bearer {{employee_token}}
+
+### 38. Calculate Payroll Preview - SUCCESS ✅
+POST http://localhost:8081/api/payroll/calculate
+Content-Type: application/json
+Authorization: Bearer {{admin_token}}
+
+{
+  "employeeId": 4,
+  "baseSalary": 10000000,
+  "overtimeHours": 10,
+  "attendanceBonus": 500000,
+  "leaveDeduction": 200000
+}
+
+### 39. Export Payroll Report - SUCCESS ✅
+GET http://localhost:8081/api/payroll/export?month=2025-10&format=pdf
+Authorization: Bearer {{admin_token}}
+
+### ==========================================
+### DEPARTMENT MANAGEMENT TESTS
+### ==========================================
+
+### 40. Get All Departments - SUCCESS ✅
+GET http://localhost:8081/api/departments
+Authorization: Bearer {{employee_token}}
+
+### 41. Create New Department - SUCCESS ✅
+POST http://localhost:8081/api/departments
+Content-Type: application/json
+Authorization: Bearer {{admin_token}}
+
+{
+  "name": "Research and Development",
+  "description": "Innovation and product development team",
+  "managerId": 2
+}
+
+### 42. Get Department by ID - SUCCESS ✅
+GET http://localhost:8081/api/departments/1
+Authorization: Bearer {{employee_token}}
+
+### 43. Update Department - SUCCESS ✅
+PUT http://localhost:8081/api/departments/1
+Content-Type: application/json
+Authorization: Bearer {{admin_token}}
+
+{
+  "name": "Engineering and Development",
+  "description": "Software development and technical operations",
+  "managerId": 3
+}
+
+### 44. Get Department Employees - SUCCESS ✅
+GET http://localhost:8081/api/departments/1/employees
+Authorization: Bearer {{employee_token}}
+
+### 45. Delete Department - SUCCESS ✅
+DELETE http://localhost:8081/api/departments/5
+Authorization: Bearer {{admin_token}}
+
+### ==========================================
+### SYSTEM ADMINISTRATION TESTS
+### ==========================================
+
+### 46. System Health Check - SUCCESS ✅
+GET http://localhost:8081/api/health
+
+### 47. Get System Statistics - SUCCESS ✅
+GET http://localhost:8081/api/admin/stats
+Authorization: Bearer {{admin_token}}
+
+### 48. Get Audit Logs - SUCCESS ✅
+GET http://localhost:8081/api/admin/audit-logs
+Authorization: Bearer {{admin_token}}
+
+### 49. Database Backup - SUCCESS ✅
+POST http://localhost:8081/api/admin/backup
+Authorization: Bearer {{admin_token}}
+
+### 50. Generate Reports - SUCCESS ✅
+POST http://localhost:8081/api/admin/reports/generate
+Content-Type: application/json
+Authorization: Bearer {{admin_token}}
+
+{
+  "type": "monthly",
+  "month": "2025-10",
+  "format": "pdf"
+}
+
+### ==========================================
+### ERROR HANDLING TESTS
+### ==========================================
+
+### 51. Unauthorized Access - SHOULD FAIL ❌
+GET http://localhost:8081/api/employees
+Authorization: Bearer INVALID_TOKEN
+
+### 52. Missing Authorization Header - SHOULD FAIL ❌
+GET http://localhost:8081/api/employees
+
+### 53. Invalid Employee ID - SHOULD FAIL ❌
+GET http://localhost:8081/api/employees/99999
+Authorization: Bearer {{employee_token}}
+
+### 54. Invalid Date Format - SHOULD FAIL ❌
+POST http://localhost:8081/api/leave
+Content-Type: application/json
+Authorization: Bearer {{employee_token}}
+
+{
+  "startDate": "invalid-date",
+  "endDate": "2025-10-17",
+  "type": "annual",
+  "reason": "Test invalid date"
+}
+
+### 55. Email Already Exists - SHOULD FAIL ❌
+POST http://localhost:8081/api/employees
+Content-Type: application/json
+Authorization: Bearer {{admin_token}}
+
+{
+  "firstName": "Duplicate",
+  "lastName": "User",
+  "email": "employee@hris.com",
+  "phoneNumber": "+6281234567892"
+}
+
+### ==========================================
+### PERFORMANCE TESTS
+### ==========================================
+
+### 56. Bulk Employee Data - SUCCESS ✅
+GET http://localhost:8081/api/employees?page=1&size=50&sort=firstName,asc
+Authorization: Bearer {{employee_token}}
+
+### 57. Search Performance - SUCCESS ✅
+GET http://localhost:8081/api/employees/search?keyword=a&page=1&size=20
+Authorization: Bearer {{employee_token}}
+
+### 58. Bulk Attendance Report - SUCCESS ✅
+GET http://localhost:8081/api/attendance/admin/all?startDate=2025-09-01&endDate=2025-10-01
+Authorization: Bearer {{admin_token}}
+
+### ==========================================
+### TOKEN VARIABLES (Replace with actual tokens)
+### ==========================================
+### @employee_token = PASTE_EMPLOYEE_JWT_TOKEN_HERE
+### @admin_token = PASTE_ADMIN_JWT_TOKEN_HERE
+### @supervisor_token = PASTE_SUPERVISOR_JWT_TOKEN_HERE
+### @hr_token = PASTE_HR_JWT_TOKEN_HERE
