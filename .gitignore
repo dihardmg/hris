@@ -31,3 +31,13 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### file ###
+.claude
+.gitattributes
+mvnw
+.gitattributes:Zone.Identifier
+.gitignore:Zone.Identifier
+compose.yaml:Zone.Identifier
+HELP.md:Zone.Identifier
+pom.xml:Zone.Identifier
