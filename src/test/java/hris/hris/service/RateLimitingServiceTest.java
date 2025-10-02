@@ -3,7 +3,10 @@ package hris.hris.service;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -11,14 +14,22 @@ import java.time.temporal.ChronoUnit;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
+@ActiveProfiles("test")
 class RateLimitingServiceTest {
 
+    @Autowired
     private RateLimitingService rateLimitingService;
+
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
+
     private static final String TEST_EMAIL = "test@example.com";
 
     @BeforeEach
     void setUp() {
-        rateLimitingService = new RateLimitingService();
+        // Clean up Redis before each test
+        String key = "rate_limit:" + TEST_EMAIL;
+        redisTemplate.delete(key);
     }
 
     @Test
@@ -113,6 +124,10 @@ class RateLimitingServiceTest {
         String user1 = "user1@example.com";
         String user2 = "user2@example.com";
 
+        // Clean up Redis before test
+        redisTemplate.delete("rate_limit:" + user1);
+        redisTemplate.delete("rate_limit:" + user2);
+
         // When - User1 makes 5 failed attempts
         for (int i = 0; i < 5; i++) {
             rateLimitingService.recordFailedLogin(user1);
@@ -121,6 +136,10 @@ class RateLimitingServiceTest {
         // Then - User1 should be rate limited, User2 should not
         assertTrue(rateLimitingService.isRateLimited(user1), "User1 should be rate limited");
         assertFalse(rateLimitingService.isRateLimited(user2), "User2 should not be rate limited");
+
+        // Cleanup
+        redisTemplate.delete("rate_limit:" + user1);
+        redisTemplate.delete("rate_limit:" + user2);
     }
 
     @Test
