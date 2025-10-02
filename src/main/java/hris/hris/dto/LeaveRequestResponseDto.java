@@ -5,10 +5,11 @@ import lombok.Data;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 public class LeaveRequestResponseDto {
-    private Long id;
+    private UUID uuid;
     private LeaveRequest.LeaveType leaveType;
     private LocalDate startDate;
     private LocalDate endDate;
@@ -32,7 +33,7 @@ public class LeaveRequestResponseDto {
 
     public static LeaveRequestResponseDto fromLeaveRequest(LeaveRequest leaveRequest, Integer remainingBalance) {
         LeaveRequestResponseDto dto = new LeaveRequestResponseDto();
-        dto.setId(leaveRequest.getId());
+        dto.setUuid(leaveRequest.getUuid());
         dto.setLeaveType(leaveRequest.getLeaveType());
         dto.setStartDate(leaveRequest.getStartDate());
         dto.setEndDate(leaveRequest.getEndDate());

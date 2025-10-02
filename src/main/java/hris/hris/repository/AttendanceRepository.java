@@ -14,6 +14,7 @@ import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
@@ -44,4 +45,7 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     List<Attendance> findByEmployeeIdAndClockInTimeBetweenOrderByCreatedAtDesc(Long employeeId, LocalDateTime start, LocalDateTime end);
 
     Page<Attendance> findByEmployeeIdAndClockInTimeBetweenOrderByCreatedAtDesc(Long employeeId, LocalDateTime start, LocalDateTime end, Pageable pageable);
+
+    // UUID-based queries for API security
+    Optional<Attendance> findByUuid(UUID uuid);
 }

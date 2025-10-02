@@ -246,7 +246,6 @@ class AttendanceServiceTest {
         Optional<AttendanceDto> result = attendanceService.getTodayAttendance(1L);
 
         assertTrue(result.isPresent());
-        assertEquals(1L, result.get().getEmployeeId());
 
         verify(attendanceRepository).findTodayAttendance(anyLong(), any(LocalDateTime.class), any(LocalDateTime.class));
     }

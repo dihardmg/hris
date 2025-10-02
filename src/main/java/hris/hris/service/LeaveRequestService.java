@@ -14,6 +14,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @Slf4j
@@ -82,8 +83,8 @@ public class LeaveRequestService {
     }
 
     @Transactional
-    public LeaveRequest approveLeaveRequest(Long requestId, Long supervisorId) {
-        LeaveRequest leaveRequest = leaveRequestRepository.findById(requestId)
+    public LeaveRequest approveLeaveRequest(UUID uuid, Long supervisorId) {
+        LeaveRequest leaveRequest = leaveRequestRepository.findByUuid(uuid)
             .orElseThrow(() -> new RuntimeException("Leave request not found"));
 
         if (!leaveRequest.getStatus().equals(LeaveRequest.RequestStatus.PENDING)) {
@@ -107,14 +108,14 @@ public class LeaveRequestService {
 
         LeaveRequest savedRequest = leaveRequestRepository.save(leaveRequest);
         log.info("Leave request {} approved by supervisor {}",
-                requestId, supervisor.getEmployeeId());
+                uuid, supervisor.getEmployeeId());
 
         return savedRequest;
     }
 
     @Transactional
-    public LeaveRequest rejectLeaveRequest(Long requestId, Long supervisorId) {
-        LeaveRequest leaveRequest = leaveRequestRepository.findById(requestId)
+    public LeaveRequest rejectLeaveRequest(UUID uuid, Long supervisorId) {
+        LeaveRequest leaveRequest = leaveRequestRepository.findByUuid(uuid)
             .orElseThrow(() -> new RuntimeException("Leave request not found"));
 
         if (!leaveRequest.getStatus().equals(LeaveRequest.RequestStatus.PENDING)) {
@@ -134,7 +135,7 @@ public class LeaveRequestService {
 
         LeaveRequest savedRequest = leaveRequestRepository.save(leaveRequest);
         log.info("Leave request {} rejected by supervisor {}",
-                requestId, supervisor.getEmployeeId());
+                uuid, supervisor.getEmployeeId());
 
         return savedRequest;
     }
@@ -168,6 +169,11 @@ public class LeaveRequestService {
     @Transactional(readOnly = true)
     public Optional<LeaveRequest> getLeaveRequestById(Long requestId) {
         return leaveRequestRepository.findById(requestId);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<LeaveRequest> getLeaveRequestByUuid(UUID uuid) {
+        return leaveRequestRepository.findByUuid(uuid);
     }
 
     private void validateLeaveBalance(Employee employee, LeaveRequestDto requestDto) {

@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/leave")
@@ -132,16 +133,16 @@ public class LeaveRequestController {
         }
     }
 
-    @GetMapping("/request/{requestId}")
+    @GetMapping("/request/{uuid}")
     @PreAuthorize("hasRole('EMPLOYEE') or hasRole('SUPERVISOR') or hasRole('HR') or hasRole('ADMIN')")
-    public ResponseEntity<?> getLeaveRequestById(@RequestHeader(value = "Authorization", required = false) String token,
-                                                @PathVariable Long requestId) {
+    public ResponseEntity<?> getLeaveRequestByUuid(@RequestHeader(value = "Authorization", required = false) String token,
+                                                  @PathVariable UUID uuid) {
         try {
             Long currentEmployeeId = getEmployeeIdFromRequest(token);
 
-            var leaveRequestOptional = leaveRequestService.getLeaveRequestById(requestId);
+            var leaveRequestOptional = leaveRequestService.getLeaveRequestByUuid(uuid);
             if (leaveRequestOptional.isEmpty()) {
-                return ResponseEntity.status(403).body(ApiResponse.error("Access denied."));
+                return ResponseEntity.status(404).body(ApiResponse.error("Leave request not found."));
             }
 
             LeaveRequest leaveRequest = leaveRequestOptional.get();
@@ -171,7 +172,7 @@ public class LeaveRequestController {
             return ResponseEntity.ok(ApiResponse.success(responseDto, "Leave request retrieved successfully"));
 
         } catch (Exception e) {
-            log.error("Get leave request by ID failed", e);
+            log.error("Get leave request by UUID failed", e);
             String errorMessage = e.getMessage() != null ? e.getMessage() : "Failed to get leave request";
             return ResponseEntity.badRequest().body(ApiResponse.error(errorMessage));
         }
@@ -221,14 +222,14 @@ public class LeaveRequestController {
         }
     }
 
-    @PostMapping("/supervisor/approve/{requestId}")
+    @PostMapping("/supervisor/approve/{uuid}")
     @PreAuthorize("hasRole('SUPERVISOR')")
     public ResponseEntity<?> approveLeaveRequest(@RequestHeader(value = "Authorization", required = false) String token,
-                                                @PathVariable Long requestId) {
+                                                @PathVariable UUID uuid) {
         try {
             Long supervisorId = getEmployeeIdFromRequest(token);
 
-            LeaveRequest approvedRequest = leaveRequestService.approveLeaveRequest(requestId, supervisorId);
+            LeaveRequest approvedRequest = leaveRequestService.approveLeaveRequest(uuid, supervisorId);
 
             // Convert to DTO for consistent response
             Employee employee = approvedRequest.getEmployee();
@@ -244,14 +245,14 @@ public class LeaveRequestController {
         }
     }
 
-    @PostMapping("/supervisor/reject/{requestId}")
+    @PostMapping("/supervisor/reject/{uuid}")
     @PreAuthorize("hasRole('SUPERVISOR')")
     public ResponseEntity<?> rejectLeaveRequest(@RequestHeader(value = "Authorization", required = false) String token,
-                                               @PathVariable Long requestId) {
+                                               @PathVariable UUID uuid) {
         try {
             Long supervisorId = getEmployeeIdFromRequest(token);
 
-            LeaveRequest rejectedRequest = leaveRequestService.rejectLeaveRequest(requestId, supervisorId);
+            LeaveRequest rejectedRequest = leaveRequestService.rejectLeaveRequest(uuid, supervisorId);
 
             // Convert to DTO for consistent response
             Employee employee = rejectedRequest.getEmployee();

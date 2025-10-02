@@ -4,7 +4,9 @@ import hris.hris.dto.ApiResponse;
 import hris.hris.dto.AttendanceDto;
 import hris.hris.dto.ClockInRequest;
 import hris.hris.dto.PaginatedAttendanceResponse;
+import hris.hris.model.Attendance;
 import hris.hris.model.Employee;
+import hris.hris.repository.AttendanceRepository;
 import hris.hris.repository.EmployeeRepository;
 import hris.hris.security.JwtUtil;
 import hris.hris.service.AttendanceService;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/attendance")
@@ -36,6 +39,9 @@ public class AttendanceController {
 
     @Autowired
     private EmployeeRepository employeeRepository;
+
+    @Autowired
+    private AttendanceRepository attendanceRepository;
 
     private Long getEmployeeIdFromAuth() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -150,22 +156,22 @@ public class AttendanceController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{uuid}")
     @PreAuthorize("hasRole('EMPLOYEE') or hasRole('SUPERVISOR') or hasRole('HR') or hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<AttendanceDto>> getAttendanceById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<AttendanceDto>> getAttendanceByUuid(@PathVariable UUID uuid) {
         try {
             Long currentEmployeeId = getEmployeeIdFromAuth();
 
-            var attendanceOpt = attendanceService.getAttendanceById(id);
-            if (attendanceOpt.isEmpty()) {
-                return ResponseEntity.status(403).body(ApiResponse.error("Access denied."));
+            var attendanceEntityOpt = attendanceRepository.findByUuid(uuid);
+            if (attendanceEntityOpt.isEmpty()) {
+                return ResponseEntity.status(404).body(ApiResponse.error("Attendance record not found."));
             }
 
-            AttendanceDto attendance = attendanceOpt.get();
+            var attendanceEntity = attendanceEntityOpt.get();
 
             // Authorization check: Employees can only view their own attendance records,
             // Supervisors, HR, and Admin can view all records
-            if (!currentEmployeeId.equals(attendance.getEmployeeId())) {
+            if (!currentEmployeeId.equals(attendanceEntity.getEmployee().getId())) {
                 // Check if current user has supervisor, HR, or admin role
                 Employee currentUser = employeeRepository.findById(currentEmployeeId)
                     .orElseThrow(() -> new RuntimeException("Current user not found"));
@@ -180,10 +186,11 @@ public class AttendanceController {
                 }
             }
 
-            return ResponseEntity.ok(ApiResponse.success(attendance, "Attendance record retrieved successfully"));
+            AttendanceDto attendanceDto = attendanceService.mapToDto(attendanceEntity);
+            return ResponseEntity.ok(ApiResponse.success(attendanceDto, "Attendance record retrieved successfully"));
 
         } catch (Exception e) {
-            log.error("Get attendance by ID failed", e);
+            log.error("Get attendance by UUID failed", e);
             String errorMessage = e.getMessage() != null ? e.getMessage() : "Failed to get attendance record";
             return ResponseEntity.badRequest().body(ApiResponse.error(errorMessage));
         }

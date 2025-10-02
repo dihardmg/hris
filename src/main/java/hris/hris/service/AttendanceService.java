@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -172,10 +173,14 @@ public class AttendanceService {
         return attendanceRepository.findById(attendanceId).map(this::mapToDto);
     }
 
-    private AttendanceDto mapToDto(Attendance attendance) {
+    @Transactional(readOnly = true)
+    public Optional<AttendanceDto> getAttendanceByUuid(UUID uuid) {
+        return attendanceRepository.findByUuid(uuid).map(this::mapToDto);
+    }
+
+    public AttendanceDto mapToDto(Attendance attendance) {
         AttendanceDto dto = new AttendanceDto();
-        dto.setId(attendance.getId());
-        dto.setEmployeeId(attendance.getEmployee().getId());
+        dto.setUuid(attendance.getUuid());
         dto.setEmployeeName(attendance.getEmployee().getFirstName() + " " + attendance.getEmployee().getLastName());
         dto.setClockInTime(attendance.getClockInTime());
         dto.setClockOutTime(attendance.getClockOutTime());

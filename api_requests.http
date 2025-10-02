@@ -20,6 +20,8 @@
 @employeeId = 4146
 @leaveRequestId = 15
 @travelRequestId = 1
+@attendanceUuid = 74dfbcdd-8ae8-4476-8f58-ae81f367da54
+@leaveRequestUuid = 3e1a8a57-d663-4c22-b345-87b766db1516
 
 ### =====================================================
 ### 1. AUTHENTICATION ENDPOINTS
@@ -135,28 +137,30 @@ GET {{baseUrl}}/api/attendance/history
 Authorization: Bearer {{token}}
 
 ### @name getAttendanceHistoryPaginated
-GET {{baseUrl}}/api/attendance/history?page=0&size=10
+GET {{baseUrl}}/api/attendance/history?page=0&size=1
 Authorization: Bearer {{token}}
 
 # =====================================================
-# GET ATTENDANCE BY ID
+# GET ATTENDANCE BY UUID
 # =====================================================
-# This endpoint retrieves a specific attendance record by ID
+# This endpoint retrieves a specific attendance record by UUID
+# SECURITY: Uses UUID instead of numeric ID to prevent IDOR attacks
 # Access Control:
 # - Employees can only view their own attendance records
 # - Supervisors, HR, and Admin can view all attendance records
 # Returns complete attendance details with location, timing, and geofence information
+# UUID format: 550e8400-e29b-41d4-a716-446655440000 (128-bit random identifier)
 
-### @name getAttendanceById
-GET {{baseUrl}}/api/attendance/3
+### @name getAttendanceByUuid
+GET {{baseUrl}}/api/attendance/{{attendanceUuid}}
 Authorization: Bearer {{token}}
 
-### @name getNonExistentAttendanceById
-GET {{baseUrl}}/api/attendance/999
+### @name getNonExistentAttendanceByUuid
+GET http://localhost:8083/api/attendance/74dfbcdd-8ae8-4476-8f58-ae81f367da54
 Authorization: Bearer {{token}}
 
-### @name getAttendanceByIdAsSupervisor
-GET {{baseUrl}}/api/attendance/6
+### @name getAttendanceByUuidAsSupervisor
+GET {{baseUrl}}/api/attendance/74dfbcdd-8ae8-4476-8f58-ae81f36a54
 Authorization: Bearer {{adminToken}}
 
 ### @name clockInTwice
@@ -183,8 +187,8 @@ Authorization: Bearer {{token}}
 
 {
   "leaveType": "ANNUAL_LEAVE",
-  "startDate": "2025-12-05",
-  "endDate": "2025-12-05",
+  "startDate": "2025-12-06",
+  "endDate": "2025-12-06",
   "reason": "Family vacation - attending wedding ceremony"
 }
 
@@ -268,45 +272,43 @@ GET {{baseUrl}}/api/leave/current
 Authorization: Bearer {{token}}
 
 # =====================================================
-# NEW: Get Leave Request by ID
+# NEW: Get Leave Request by UUID
 # =====================================================
-# This endpoint allows retrieving specific leave request details by ID
+# This endpoint allows retrieving specific leave request details by UUID
+# SECURITY: Uses UUID instead of numeric ID to prevent IDOR attacks
 # Access Control:
 # - Employees can only view their own leave requests
 # - Supervisors can view subordinate requests
 # - HR/Admin can view all requests
 # Returns full leave request details with createdBy/updatedBy audit trail
+# UUID format: 550e8400-e29b-41d4-a716-446655440001 (128-bit random identifier)
 
-### @name getLeaveRequestById
-GET {{baseUrl}}/api/leave/request/{{leaveRequestId}}
+### @name getLeaveRequestByUuid
+GET {{baseUrl}}/api/leave/request/{{leaveRequestUuid}}
 Authorization: Bearer {{token}}
 
-### @name getLeaveRequestByIdAsSupervisor
-GET {{baseUrl}}/api/leave/request/27
+### @name getLeaveRequestByUuidAsSupervisor
+GET {{baseUrl}}/api/leave/request/550e8400-e29b-41d4-a716-446655440003
 Authorization: Bearer {{adminToken}}
 
-### @name getNonExistentLeaveRequest
-GET {{baseUrl}}/api/leave/request/16
+### @name getNonExistentLeaveRequestByUuid
+GET {{baseUrl}}/api/leave/request/550e8400-e29b-41d4-a716-446655449998
 Authorization: Bearer {{token}}
 
 ### @name getNonExistentLeaveRequest999
-GET {{baseUrl}}/api/leave/request/999
+GET {{baseUrl}}/api/leave/request/550e8400-e29b-41d4-a716-446655449999
 Authorization: Bearer {{token}}
-# Expected: 403 Forbidden with "Access denied." message
-# This ensures no information leakage about whether specific leave request IDs exist
+# Expected: 404 Not Found with "Leave request not found." message
+# SECURITY: No information leakage about whether specific UUIDs exist
 
 ### @name approveLeaveRequest
-POST {{baseUrl}}/api/leave/supervisor/approve/{{leaveRequestId}}
+POST {{baseUrl}}/api/leave/supervisor/approve/{{leaveRequestUuid}}
 Authorization: Bearer {{adminToken}}
 
 
 ### @name rejectLeaveRequest
-POST {{baseUrl}}/api/leave/supervisor/reject/{{leaveRequestId}}
+POST {{baseUrl}}/api/leave/supervisor/reject/{{leaveRequestUuid}}
 Authorization: Bearer {{adminToken}}
-
-{
-  "rejectionReason": "Critical project deadline during this period"
-}
 
 ### =====================================================
 ### 4. BUSINESS TRAVEL ENDPOINTS
@@ -455,13 +457,21 @@ Authorization: Bearer {{adminToken}}
 #    - Parameters: page (0-based), size (items per page), days (filter by last N days)
 #    - Example: GET /api/leave/my-requests?page=0&size=5&days=30
 
-# 5. ATTENDANCE BY ID TESTING:
-#    - Get own attendance record: getAttendanceById (using employee token)
-#    - Get attendance as supervisor: getAttendanceByIdAsSupervisor (using admin token)
-#    - Test error handling: getNonExistentAttendanceById
+# 5. ATTENDANCE BY UUID TESTING:
+#    - Get own attendance record: getAttendanceByUuid (using employee token)
+#    - Get attendance as supervisor: getAttendanceByUuidAsSupervisor (using admin token)
+#    - Test error handling: getNonExistentAttendanceByUuid
+#    - SECURITY: Uses 128-bit UUIDs instead of predictable numeric IDs
 #    - Access Control: Employees can only view their own records, supervisors can view all
 
-# 6. RESPONSE FORMAT:
+# 6. SECURITY FEATURES:
+#    - UUID IMPLEMENTATION: API endpoints use 128-bit UUIDs instead of predictable numeric IDs
+#    - IDOR PREVENTION: Prevents Insecure Direct Object Reference attacks
+#    - ACCESS CONTROL: Role-based authorization with proper permission checks
+#    - NO INFORMATION LEAKAGE: 404 errors for non-existent UUIDs, not 403
+#    - Examples: /api/attendance/550e8400-e29b-41d4-a716-446655440000
+
+# 7. RESPONSE FORMAT:
 #    - Success: {"data": {...}, "message": "..."}
 #    - Error: {"data": null, "message": "Error description"}
 #    - HTTP Status Codes indicate success/failure

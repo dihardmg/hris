@@ -12,6 +12,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long> {
@@ -41,4 +42,7 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
     Page<LeaveRequest> findByEmployeeIdAndCreatedAtAfter(@Param("employeeId") Long employeeId,
                                                          @Param("startDate") LocalDateTime startDate,
                                                          Pageable pageable);
+
+    // UUID-based queries for API security
+    Optional<LeaveRequest> findByUuid(UUID uuid);
 }

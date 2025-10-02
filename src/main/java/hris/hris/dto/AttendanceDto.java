@@ -3,11 +3,11 @@ package hris.hris.dto;
 import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 public class AttendanceDto {
-    private Long id;
-    private Long employeeId;
+    private UUID uuid;
     private String employeeName;
     private LocalDateTime clockInTime;
     private LocalDateTime clockOutTime;
