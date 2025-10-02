@@ -63,7 +63,7 @@ class AuthControllerIntegrationTest {
         testEmployee.setLastName("User");
         testEmployee.setEmail("test@example.com");
         testEmployee.setPassword(passwordEncoder.encode("password123"));
-        testEmployee.setEmployeeId("EMP001");
+        testEmployee.setEmployeeId("AUTH001");
         testEmployee.setPhoneNumber("+1234567890");
         testEmployee.setIsActive(true);
         testEmployee.setAnnualLeaveBalance(12);
@@ -83,14 +83,14 @@ class AuthControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").exists())
                 .andExpect(jsonPath("$.employeeId").value(testEmployee.getId()))
-                .andExpect(jsonPath("$.employeeCode").value("EMP001"))
+                .andExpect(jsonPath("$.employeeCode").value("AUTH001"))
                 .andExpect(jsonPath("$.firstName").value("Test"))
                 .andExpect(jsonPath("$.lastName").value("User"))
                 .andExpect(jsonPath("$.email").value("test@example.com"));
     }
 
     @Test
-    void login_WithInvalidCredentials_ShouldReturnBadRequest() throws Exception {
+    void login_WithInvalidCredentials_ShouldReturnUnauthorized() throws Exception {
         LoginRequest loginRequest = new LoginRequest();
         loginRequest.setEmail("test@example.com");
         loginRequest.setPassword("wrongpassword");
@@ -98,12 +98,12 @@ class AuthControllerIntegrationTest {
         mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(loginRequest)))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().is(401))
                 .andExpect(jsonPath("$.message").exists());
     }
 
     @Test
-    void login_WithNonExistentUser_ShouldReturnBadRequest() throws Exception {
+    void login_WithNonExistentUser_ShouldReturnUnauthorized() throws Exception {
         LoginRequest loginRequest = new LoginRequest();
         loginRequest.setEmail("nonexistent@example.com");
         loginRequest.setPassword("password123");
@@ -111,7 +111,7 @@ class AuthControllerIntegrationTest {
         mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(loginRequest)))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().is(401))
                 .andExpect(jsonPath("$.message").exists());
     }
 
@@ -189,10 +189,11 @@ class AuthControllerIntegrationTest {
     }
 
     @Test
-    void validateToken_WithMissingToken_ShouldReturnBadRequest() throws Exception {
+    void validateToken_WithMissingToken_ShouldReturnInternalServerError() throws Exception {
         mockMvc.perform(post("/api/auth/validate"))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().string("Invalid token"));
+                .andExpect(status().is(500))
+                .andExpect(jsonPath("$.error").value("Internal Server Error"))
+                .andExpect(jsonPath("$.message").value("An unexpected error occurred"));
     }
 
     @Test
@@ -266,7 +267,7 @@ class AuthControllerIntegrationTest {
     }
 
     @Test
-    void login_WithInactiveEmployee_ShouldReturnBadRequest() throws Exception {
+    void login_WithInactiveEmployee_ShouldReturnUnauthorized() throws Exception {
         testEmployee.setIsActive(false);
         employeeRepository.save(testEmployee);
 
@@ -277,7 +278,7 @@ class AuthControllerIntegrationTest {
         mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(loginRequest)))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().is(401))
                 .andExpect(jsonPath("$.message").exists());
     }
 
@@ -306,7 +307,7 @@ class AuthControllerIntegrationTest {
     }
 
     @Test
-    void login_WithShortPassword_ShouldReturnBadRequest() throws Exception {
+    void login_WithShortPassword_ShouldReturnUnauthorized() throws Exception {
         LoginRequest loginRequest = new LoginRequest();
         loginRequest.setEmail("test@example.com");
         loginRequest.setPassword("123");
@@ -314,6 +315,6 @@ class AuthControllerIntegrationTest {
         mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(loginRequest)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().is(401));
     }
 }

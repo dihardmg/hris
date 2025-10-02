@@ -1,6 +1,8 @@
 package hris.hris.service;
 
+import hris.hris.dto.AttendanceDto;
 import hris.hris.dto.ClockInRequest;
+import hris.hris.dto.PaginatedAttendanceResponse;
 import hris.hris.model.Attendance;
 import hris.hris.model.Employee;
 import hris.hris.repository.AttendanceRepository;
@@ -11,6 +13,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -76,7 +81,7 @@ class AttendanceServiceTest {
                 .thenReturn(true);
         when(attendanceRepository.save(any(Attendance.class))).thenReturn(existingAttendance);
 
-        Attendance result = attendanceService.clockIn(1L, clockInRequest);
+        AttendanceDto result = attendanceService.clockIn(1L, clockInRequest);
 
         assertNotNull(result);
 
@@ -122,6 +127,26 @@ class AttendanceServiceTest {
     }
 
     @Test
+    void clockIn_WithAlreadyClockedOut_ShouldThrowRuntimeException() {
+        existingAttendance.setClockOutTime(LocalDateTime.now().minusHours(4));
+
+        when(employeeRepository.findById(1L)).thenReturn(Optional.of(employee));
+        when(attendanceRepository.findTodayAttendanceWithLock(anyLong(), any(LocalDateTime.class), any(LocalDateTime.class)))
+                .thenReturn(Optional.of(existingAttendance));
+
+        RuntimeException exception = assertThrows(
+                RuntimeException.class,
+                () -> attendanceService.clockIn(1L, clockInRequest)
+        );
+
+        assertEquals("You have already clocked in and clocked out today", exception.getMessage());
+
+        verify(employeeRepository).findById(1L);
+        verify(attendanceRepository).findTodayAttendanceWithLock(anyLong(), any(LocalDateTime.class), any(LocalDateTime.class));
+        verify(attendanceRepository, never()).save(any(Attendance.class));
+    }
+
+    @Test
     void clockIn_WithoutLocation_ShouldStillWork() {
         ClockInRequest requestWithoutLocation = new ClockInRequest();
         requestWithoutLocation.setLatitude(0.0);
@@ -137,7 +162,7 @@ class AttendanceServiceTest {
                 .thenReturn(false);
         when(attendanceRepository.save(any(Attendance.class))).thenReturn(existingAttendance);
 
-        Attendance result = attendanceService.clockIn(1L, requestWithoutLocation);
+        AttendanceDto result = attendanceService.clockIn(1L, requestWithoutLocation);
 
         assertNotNull(result);
 
@@ -153,7 +178,7 @@ class AttendanceServiceTest {
                 .thenReturn(Optional.of(existingAttendance));
         when(attendanceRepository.save(any(Attendance.class))).thenReturn(existingAttendance);
 
-        Attendance result = attendanceService.clockOut(1L);
+        AttendanceDto result = attendanceService.clockOut(1L);
 
         assertNotNull(result);
         assertNotNull(result.getClockOutTime());
@@ -172,7 +197,7 @@ class AttendanceServiceTest {
                 () -> attendanceService.clockOut(1L)
         );
 
-        assertEquals("No clock-in record found for today", exception.getMessage());
+        assertEquals("No active clock-in record found for today", exception.getMessage());
 
         verify(attendanceRepository).findTodayAttendanceWithLock(anyLong(), any(LocalDateTime.class), any(LocalDateTime.class));
         verify(attendanceRepository, never()).save(any(Attendance.class));
@@ -190,7 +215,7 @@ class AttendanceServiceTest {
                 () -> attendanceService.clockOut(1L)
         );
 
-        assertEquals("Already clocked out today", exception.getMessage());
+        assertEquals("You have already clocked out today", exception.getMessage());
 
         verify(attendanceRepository).findTodayAttendanceWithLock(anyLong(), any(LocalDateTime.class), any(LocalDateTime.class));
         verify(attendanceRepository, never()).save(any(Attendance.class));
@@ -203,7 +228,7 @@ class AttendanceServiceTest {
                 anyLong(), any(LocalDateTime.class), any(LocalDateTime.class)))
                 .thenReturn(attendances);
 
-        List<Attendance> result = attendanceService.getEmployeeAttendanceHistory(1L, 7);
+        List<AttendanceDto> result = attendanceService.getEmployeeAttendanceHistory(1L, 7);
 
         assertNotNull(result);
         assertEquals(1, result.size());
@@ -218,10 +243,10 @@ class AttendanceServiceTest {
         when(attendanceRepository.findTodayAttendance(anyLong(), any(LocalDateTime.class), any(LocalDateTime.class)))
                 .thenReturn(Optional.of(existingAttendance));
 
-        Optional<Attendance> result = attendanceService.getTodayAttendance(1L);
+        Optional<AttendanceDto> result = attendanceService.getTodayAttendance(1L);
 
         assertTrue(result.isPresent());
-        assertEquals("EMP001", result.get().getEmployee().getEmployeeId());
+        assertEquals(1L, result.get().getEmployeeId());
 
         verify(attendanceRepository).findTodayAttendance(anyLong(), any(LocalDateTime.class), any(LocalDateTime.class));
     }
@@ -231,7 +256,7 @@ class AttendanceServiceTest {
         when(attendanceRepository.findTodayAttendance(anyLong(), any(LocalDateTime.class), any(LocalDateTime.class)))
                 .thenReturn(Optional.empty());
 
-        Optional<Attendance> result = attendanceService.getTodayAttendance(1L);
+        Optional<AttendanceDto> result = attendanceService.getTodayAttendance(1L);
 
         assertFalse(result.isPresent());
 
@@ -251,6 +276,53 @@ class AttendanceServiceTest {
     }
 
     @Test
+    void hasCompletedAttendance_WithCompletedAttendance_ShouldReturnTrue() {
+        existingAttendance.setClockOutTime(LocalDateTime.now().minusHours(4));
+        LocalDateTime testDate = LocalDateTime.now();
+
+        when(attendanceRepository.existsByEmployeeIdAndClockInTimeBetweenAndClockOutTimeIsNotNull(
+                eq(1L), any(LocalDateTime.class), any(LocalDateTime.class)))
+                .thenReturn(true);
+
+        boolean result = attendanceService.hasCompletedAttendance(1L, testDate);
+
+        assertTrue(result);
+
+        verify(attendanceRepository).existsByEmployeeIdAndClockInTimeBetweenAndClockOutTimeIsNotNull(
+                eq(1L), any(LocalDateTime.class), any(LocalDateTime.class));
+    }
+
+    @Test
+    void hasCompletedAttendance_WithOnlyClockIn_ShouldReturnFalse() {
+        LocalDateTime testDate = LocalDateTime.now();
+
+        when(attendanceRepository.existsByEmployeeIdAndClockInTimeBetweenAndClockOutTimeIsNotNull(
+                eq(1L), any(LocalDateTime.class), any(LocalDateTime.class)))
+                .thenReturn(false);
+
+        boolean result = attendanceService.hasCompletedAttendance(1L, testDate);
+
+        assertFalse(result);
+
+        verify(attendanceRepository).existsByEmployeeIdAndClockInTimeBetweenAndClockOutTimeIsNotNull(
+                eq(1L), any(LocalDateTime.class), any(LocalDateTime.class));
+    }
+
+    @Test
+    void hasCompletedAttendanceToday_WithCompletedAttendance_ShouldReturnTrue() {
+        when(attendanceRepository.existsByEmployeeIdAndClockInTimeBetweenAndClockOutTimeIsNotNull(
+                eq(1L), any(LocalDateTime.class), any(LocalDateTime.class)))
+                .thenReturn(true);
+
+        boolean result = attendanceService.hasCompletedAttendanceToday(1L);
+
+        assertTrue(result);
+
+        verify(attendanceRepository).existsByEmployeeIdAndClockInTimeBetweenAndClockOutTimeIsNotNull(
+                eq(1L), any(LocalDateTime.class), any(LocalDateTime.class));
+    }
+
+    @Test
     void isClockedIn_WithNoActiveAttendance_ShouldReturnFalse() {
         when(attendanceRepository.existsByEmployeeIdAndClockOutTimeIsNull(1L))
                 .thenReturn(false);
@@ -260,5 +332,92 @@ class AttendanceServiceTest {
         assertFalse(result);
 
         verify(attendanceRepository).existsByEmployeeIdAndClockOutTimeIsNull(1L);
+    }
+
+    @Test
+    void getEmployeeAttendanceHistoryPaginated_ShouldReturnPageOfAttendance() {
+        List<Attendance> attendances = Arrays.asList(existingAttendance);
+        Page<Attendance> attendancePage = new PageImpl<>(attendances, PageRequest.of(0, 1), 1);
+
+        when(attendanceRepository.findByEmployeeIdAndClockInTimeBetweenOrderByCreatedAtDesc(
+                anyLong(), any(LocalDateTime.class), any(LocalDateTime.class), any(PageRequest.class)))
+                .thenReturn(attendancePage);
+
+        Page<AttendanceDto> result = attendanceService.getEmployeeAttendanceHistoryPaginated(1L, 7, 0, 1);
+
+        assertNotNull(result);
+        assertEquals(1, result.getContent().size());
+        assertEquals(0, result.getNumber());
+        assertEquals(1, result.getSize());
+        assertEquals(1, result.getTotalElements());
+        assertEquals(1, result.getTotalPages());
+
+        verify(attendanceRepository).findByEmployeeIdAndClockInTimeBetweenOrderByCreatedAtDesc(
+                eq(1L), any(LocalDateTime.class), any(LocalDateTime.class), any(PageRequest.class));
+    }
+
+    @Test
+    void getEmployeeAttendanceHistoryPaginated_WithEmptyPage_ShouldReturnEmptyPage() {
+        Page<Attendance> emptyPage = new PageImpl<>(Arrays.asList(), PageRequest.of(0, 1), 0);
+
+        when(attendanceRepository.findByEmployeeIdAndClockInTimeBetweenOrderByCreatedAtDesc(
+                anyLong(), any(LocalDateTime.class), any(LocalDateTime.class), any(PageRequest.class)))
+                .thenReturn(emptyPage);
+
+        Page<AttendanceDto> result = attendanceService.getEmployeeAttendanceHistoryPaginated(1L, 7, 0, 1);
+
+        assertNotNull(result);
+        assertEquals(0, result.getContent().size());
+        assertEquals(0, result.getTotalElements());
+
+        verify(attendanceRepository).findByEmployeeIdAndClockInTimeBetweenOrderByCreatedAtDesc(
+                eq(1L), any(LocalDateTime.class), any(LocalDateTime.class), any(PageRequest.class));
+    }
+
+    @Test
+    void testPaginatedAttendanceResponseStructure() {
+        List<Attendance> attendances = Arrays.asList(existingAttendance);
+        Page<Attendance> attendancePage = new PageImpl<>(attendances, PageRequest.of(0, 1), 1);
+
+        when(attendanceRepository.findByEmployeeIdAndClockInTimeBetweenOrderByCreatedAtDesc(
+                anyLong(), any(LocalDateTime.class), any(LocalDateTime.class), any(PageRequest.class)))
+                .thenReturn(attendancePage);
+
+        Page<AttendanceDto> result = attendanceService.getEmployeeAttendanceHistoryPaginated(1L, 7, 0, 1);
+
+        // Test the response structure
+        PaginatedAttendanceResponse response = PaginatedAttendanceResponse.createResponse(
+            result.getContent(), result.getSize(),
+            result.getTotalElements(), result.getTotalPages(), result.getNumber() + 1
+        );
+
+        assertEquals(1, response.getData().size());
+        assertEquals(1, response.getPage().getSize());
+        assertEquals(1, response.getPage().getTotal());
+        assertEquals(1, response.getPage().getTotalPages());
+        assertEquals(1, response.getPage().getCurrent());
+    }
+
+    @Test
+    void testEmptyDataResponseFormat() {
+        Page<Attendance> emptyPage = new PageImpl<>(Arrays.asList(), PageRequest.of(0, 10), 0);
+
+        when(attendanceRepository.findByEmployeeIdAndClockInTimeBetweenOrderByCreatedAtDesc(
+                anyLong(), any(LocalDateTime.class), any(LocalDateTime.class), any(PageRequest.class)))
+                .thenReturn(emptyPage);
+
+        Page<AttendanceDto> result = attendanceService.getEmployeeAttendanceHistoryPaginated(1L, 7, 0, 10);
+
+        // Test the response structure for empty data
+        PaginatedAttendanceResponse response = PaginatedAttendanceResponse.createResponse(
+            result.getContent(), result.getSize(),
+            result.getTotalElements(), result.getTotalPages(), result.getNumber() + 1
+        );
+
+        assertEquals(0, response.getData().size()); // Empty array
+        assertEquals(10, response.getPage().getSize());
+        assertEquals(0, response.getPage().getTotal());
+        assertEquals(0, response.getPage().getTotalPages());
+        assertEquals(1, response.getPage().getCurrent());
     }
 }

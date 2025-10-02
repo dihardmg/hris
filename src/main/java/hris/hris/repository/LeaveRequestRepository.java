@@ -1,12 +1,15 @@
 package hris.hris.repository;
 
 import hris.hris.model.LeaveRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,6 +17,8 @@ import java.util.Optional;
 public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long> {
 
     List<LeaveRequest> findByEmployeeIdOrderByCreatedAtDesc(Long employeeId);
+
+    Page<LeaveRequest> findByEmployeeIdOrderByCreatedAtDesc(Long employeeId, Pageable pageable);
 
     List<LeaveRequest> findByStatusOrderByCreatedAtDesc(LeaveRequest.RequestStatus status);
 
@@ -30,4 +35,10 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
            "lr.status = 'APPROVED' AND lr.startDate <= :currentDate AND lr.endDate >= :currentDate")
     Optional<LeaveRequest> findCurrentLeave(@Param("employeeId") Long employeeId,
                                            @Param("currentDate") LocalDate currentDate);
+
+    @Query("SELECT lr FROM LeaveRequest lr WHERE lr.employee.id = :employeeId AND " +
+           "lr.createdAt >= :startDate ORDER BY lr.createdAt DESC")
+    Page<LeaveRequest> findByEmployeeIdAndCreatedAtAfter(@Param("employeeId") Long employeeId,
+                                                         @Param("startDate") LocalDateTime startDate,
+                                                         Pageable pageable);
 }

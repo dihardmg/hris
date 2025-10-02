@@ -1,5 +1,6 @@
 package hris.hris.service;
 
+import hris.hris.dto.AttendanceDto;
 import hris.hris.dto.ClockInRequest;
 import hris.hris.model.Attendance;
 import hris.hris.model.Employee;
@@ -7,6 +8,9 @@ import hris.hris.repository.AttendanceRepository;
 import hris.hris.repository.EmployeeRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +19,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -37,7 +42,7 @@ public class AttendanceService {
     private static final double GEO_FENCE_RADIUS = 100.0;
 
     @Transactional
-    public Attendance clockIn(Long employeeId, ClockInRequest request) {
+    public AttendanceDto clockIn(Long employeeId, ClockInRequest request) {
         Employee employee = employeeRepository.findById(employeeId)
             .orElseThrow(() -> new RuntimeException("Employee not found"));
 
@@ -49,14 +54,17 @@ public class AttendanceService {
             .findTodayAttendanceWithLock(employeeId, startOfDay, endOfDay);
 
         if (existingAttendance.isPresent()) {
-            throw new RuntimeException("Already clocked in today");
+            Attendance attendance = existingAttendance.get();
+            if (attendance.getClockOutTime() != null) {
+                throw new RuntimeException("You have already clocked in and clocked out today");
+            } else {
+                throw new RuntimeException("Already clocked in today");
+            }
         }
 
         Double faceConfidence = null;
         if (request.getFaceImage() != null) {
-            // Face template verification temporarily disabled
             log.debug("Face image provided but verification is disabled (feature temporarily unavailable)");
-            // Face verification would be implemented here when face templates are re-enabled
             faceConfidence = 0.8; // Default confidence for now
         }
 
@@ -81,11 +89,11 @@ public class AttendanceService {
         Attendance savedAttendance = attendanceRepository.save(attendance);
         log.info("Employee {} clocked in at {}", employee.getEmployeeId(), now);
 
-        return savedAttendance;
+        return mapToDto(savedAttendance);
     }
 
     @Transactional
-    public Attendance clockOut(Long employeeId) {
+    public AttendanceDto clockOut(Long employeeId) {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime startOfDay = now.toLocalDate().atStartOfDay();
         LocalDateTime endOfDay = now.toLocalDate().atTime(LocalTime.MAX);
@@ -94,43 +102,89 @@ public class AttendanceService {
             .findTodayAttendanceWithLock(employeeId, startOfDay, endOfDay);
 
         if (attendanceOpt.isEmpty()) {
-            throw new RuntimeException("No clock-in record found for today");
+            throw new RuntimeException("No active clock-in record found for today");
         }
 
         Attendance attendance = attendanceOpt.get();
         if (attendance.getClockOutTime() != null) {
-            throw new RuntimeException("Already clocked out today");
+            throw new RuntimeException("You have already clocked out today");
         }
 
         attendance.setClockOutTime(now);
-        attendanceRepository.save(attendance);
+        Attendance savedAttendance = attendanceRepository.save(attendance);
 
         log.info("Employee {} clocked out at {}",
-                attendance.getEmployee().getEmployeeId(), now);
+                savedAttendance.getEmployee().getEmployeeId(), now);
 
-        return attendance;
+        return mapToDto(savedAttendance);
     }
 
     @Transactional(readOnly = true)
-    public List<Attendance> getEmployeeAttendanceHistory(Long employeeId, int days) {
+    public List<AttendanceDto> getEmployeeAttendanceHistory(Long employeeId, int days) {
         LocalDateTime startDate = LocalDateTime.now().minusDays(days);
         LocalDateTime endDate = LocalDateTime.now();
 
         return attendanceRepository.findByEmployeeIdAndClockInTimeBetweenOrderByCreatedAtDesc(
-            employeeId, startDate, endDate);
+            employeeId, startDate, endDate).stream().map(this::mapToDto).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public Optional<Attendance> getTodayAttendance(Long employeeId) {
+    public Page<AttendanceDto> getEmployeeAttendanceHistoryPaginated(Long employeeId, int days, int page, int size) {
+        LocalDateTime startDate = LocalDateTime.now().minusDays(days);
+        LocalDateTime endDate = LocalDateTime.now();
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<Attendance> attendancePage = attendanceRepository.findByEmployeeIdAndClockInTimeBetweenOrderByCreatedAtDesc(
+            employeeId, startDate, endDate, pageable);
+
+        return attendancePage.map(this::mapToDto);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<AttendanceDto> getTodayAttendance(Long employeeId) {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime startOfDay = now.toLocalDate().atStartOfDay();
         LocalDateTime endOfDay = now.toLocalDate().atTime(LocalTime.MAX);
 
-        return attendanceRepository.findTodayAttendance(employeeId, startOfDay, endOfDay);
+        return attendanceRepository.findTodayAttendance(employeeId, startOfDay, endOfDay).map(this::mapToDto);
     }
 
     @Transactional(readOnly = true)
     public boolean isClockedIn(Long employeeId) {
         return attendanceRepository.existsByEmployeeIdAndClockOutTimeIsNull(employeeId);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean hasCompletedAttendance(Long employeeId, LocalDateTime date) {
+        LocalDateTime startOfDay = date.toLocalDate().atStartOfDay();
+        LocalDateTime endOfDay = date.toLocalDate().atTime(LocalTime.MAX);
+        return attendanceRepository.existsByEmployeeIdAndClockInTimeBetweenAndClockOutTimeIsNotNull(
+            employeeId, startOfDay, endOfDay);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean hasCompletedAttendanceToday(Long employeeId) {
+        return hasCompletedAttendance(employeeId, LocalDateTime.now());
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<AttendanceDto> getAttendanceById(Long attendanceId) {
+        return attendanceRepository.findById(attendanceId).map(this::mapToDto);
+    }
+
+    private AttendanceDto mapToDto(Attendance attendance) {
+        AttendanceDto dto = new AttendanceDto();
+        dto.setId(attendance.getId());
+        dto.setEmployeeId(attendance.getEmployee().getId());
+        dto.setEmployeeName(attendance.getEmployee().getFirstName() + " " + attendance.getEmployee().getLastName());
+        dto.setClockInTime(attendance.getClockInTime());
+        dto.setClockOutTime(attendance.getClockOutTime());
+        dto.setLatitude(attendance.getLatitude());
+        dto.setLongitude(attendance.getLongitude());
+        dto.setLocationAddress(attendance.getLocationAddress());
+        dto.setWithinGeofence(attendance.getIsWithinGeofence() != null ? attendance.getIsWithinGeofence() : false);
+        dto.setFaceRecognitionConfidence(attendance.getFaceRecognitionConfidence());
+        dto.setNotes(attendance.getNotes());
+        return dto;
     }
 }

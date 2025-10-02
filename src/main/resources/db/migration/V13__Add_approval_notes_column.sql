@@ -1,0 +1,17 @@
+-- Add approval_notes column to leave_request table for approval notes
+ALTER TABLE leave_requests
+ADD COLUMN approval_notes TEXT;
+
+-- Move existing approval data from rejection_reason to approval_notes for approved requests
+UPDATE leave_requests
+SET approval_notes = rejection_reason
+WHERE status = 'APPROVED' AND rejection_reason IS NOT NULL;
+
+-- Clear rejection_reason for approved requests (it should only be for rejections)
+UPDATE leave_requests
+SET rejection_reason = NULL
+WHERE status = 'APPROVED';
+
+-- Add comments for clarity
+COMMENT ON COLUMN leave_requests.approval_notes IS 'Notes added by supervisor when approving a leave request';
+COMMENT ON COLUMN leave_requests.rejection_reason IS 'Reason provided by supervisor when rejecting a leave request';

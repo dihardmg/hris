@@ -35,10 +35,26 @@ public class CustomUserDetailsService implements UserDetailsService {
             throw new UsernameNotFoundException("Employee account is inactive: " + email);
         }
 
+        // Determine roles based on employee data
+        java.util.List<SimpleGrantedAuthority> authorities = new java.util.ArrayList<>();
+        authorities.add(new SimpleGrantedAuthority("ROLE_EMPLOYEE"));
+
+        // If employee has subordinates, they are a supervisor
+        if (employeeRepository.existsBySupervisorId(employee.getId())) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_SUPERVISOR"));
+        }
+
+        // For now, assume all active employees are also HR and ADMIN for testing
+        // In production, this should be based on actual department/role data
+        if (employee.getEmail().contains("admin") || employee.getEmail().contains("hr")) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+            authorities.add(new SimpleGrantedAuthority("ROLE_HR"));
+        }
+
         return User.builder()
                 .username(employee.getEmail())
                 .password(employee.getPassword())
-                .authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_EMPLOYEE")))
+                .authorities(authorities)
                 .accountExpired(false)
                 .accountLocked(false)
                 .credentialsExpired(false)

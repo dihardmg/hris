@@ -1,5 +1,6 @@
 package hris.hris.controller;
 
+import hris.hris.dto.ApiResponse;
 import hris.hris.dto.LoginRequest;
 import hris.hris.dto.LoginResponse;
 import hris.hris.service.AuthenticationService;
@@ -27,18 +28,18 @@ public class AuthController {
     private PasswordEncoder passwordEncoder;
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<ApiResponse<LoginResponse>> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
         String email = loginRequest.getEmail();
 
         if (rateLimitingService.isRateLimited(email)) {
             log.warn("Rate limit exceeded for user: {}", email);
-            return ResponseEntity.status(429).body(null);
+            return ResponseEntity.status(429).body(ApiResponse.error("Rate limit exceeded. Please try again later."));
         }
 
         try {
             LoginResponse response = authenticationService.authenticateUser(loginRequest);
             rateLimitingService.recordSuccessfulLogin(email);
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ApiResponse.success(response, "Login successful"));
         } catch (Exception e) {
             rateLimitingService.recordFailedLogin(email);
             throw e;
@@ -46,27 +47,27 @@ public class AuthController {
     }
 
     @PostMapping("/validate")
-    public ResponseEntity<String> validateToken(@RequestHeader("Authorization") String token) {
+    public ResponseEntity<ApiResponse<Void>> validateToken(@RequestHeader("Authorization") String token) {
         if (token != null && token.startsWith("Bearer ")) {
             String jwtToken = token.substring(7);
             if (authenticationService.validateToken(jwtToken)) {
-                return ResponseEntity.ok("Token is valid");
+                return ResponseEntity.ok(ApiResponse.success("Token is valid"));
             }
         }
-        return ResponseEntity.badRequest().body("Invalid token");
+        return ResponseEntity.badRequest().body(ApiResponse.error("Invalid token"));
     }
 
     @GetMapping("/me")
-    public ResponseEntity<?> getCurrentUser(@RequestHeader("Authorization") String token) {
+    public ResponseEntity<ApiResponse<?>> getCurrentUser(@RequestHeader("Authorization") String token) {
         if (token != null && token.startsWith("Bearer ")) {
             String jwtToken = token.substring(7);
             if (authenticationService.validateToken(jwtToken)) {
                 String email = authenticationService.getEmailFromToken(jwtToken);
                 var employee = authenticationService.getCurrentEmployee(email);
-                return ResponseEntity.ok(employee);
+                return ResponseEntity.ok(ApiResponse.success(employee));
             }
         }
-        return ResponseEntity.badRequest().body("Invalid token");
+        return ResponseEntity.badRequest().body(ApiResponse.error("Invalid token"));
     }
 
     @GetMapping("/debug/hash")

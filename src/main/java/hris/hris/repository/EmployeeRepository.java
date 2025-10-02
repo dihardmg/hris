@@ -26,6 +26,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 
     List<Employee> findByIsActiveTrue();
 
+    boolean existsBySupervisorId(Long supervisorId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT e FROM Employee e WHERE e.id = :id")
     Optional<Employee> findByIdWithLock(@Param("id") Long id);

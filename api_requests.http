@@ -1,0 +1,472 @@
+### =====================================================
+### HRIS REST API - Comprehensive Testing Suite
+### =====================================================
+### For use with VS Code REST Client extension
+### Install: humao.rest-client
+### Usage: Click "Send Request" above each ### section
+### =====================================================
+
+# --- ENVIRONMENT VARIABLES ---
+@hostname = localhost:8083
+@baseUrl = http://{{hostname}}
+
+# --- AUTHENTICATION TOKENS ---
+### @token = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJlbXBsb3llZUBocmlzLmNvbSIsImVtcGxveWVlSWQiOjQsImVtcGxveWVlQ29kZSI6IkVNUDAwMSIsImlhdCI6MTc1OTQxODg4NiwiZXhwIjoxNzU5NTA1Mjg2fQ.Tt0sukhGoydJshsxOg4SVrw80tUiH1h2y4mdX8RAL01Ej7bu0M53LRIY0xwskqCL
+
+@token = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJjaXRyYS5uaW5nc2loQGhyaXMuY29tIiwiZW1wbG95ZWVJZCI6NDE0NiwiZW1wbG95ZWVDb2RlIjoiRU1QNjcxMzkiLCJpYXQiOjE3NTk0MjAxNjcsImV4cCI6MTc1OTUwNjU2N30.RI6hOEVgjJWBI0adkp6wFK4Z1A7CzPw1xBuMK1VS2gYlXwtpJ114-W13dhbUUP9L
+@adminToken = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJzdXBlcnZpc29yQGhyaXMuY29tIiwiZW1wbG95ZWVJZCI6MywiZW1wbG95ZWVDb2RlIjoiU1VQMDAxIiwiaWF0IjoxNzU5NDAwNTcyLCJleHAiOjE3NTk0ODY5NzJ9.iwf0pfv1Z9JCC3dxa7-E_AO_yzFtDzk7ahPts54pw9aiLfh3IWj2Umq_4sY0bX-u
+
+# --- DYNAMIC VARIABLES ---
+@employeeId = 4146
+@leaveRequestId = 15
+@travelRequestId = 1
+
+### =====================================================
+### 1. AUTHENTICATION ENDPOINTS
+### =====================================================
+
+### @name loginEmployee
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "employee@hris.com",
+  "password": "admin123"
+}
+
+> {%
+  if (response.status === 200) {
+    client.global.set("token", response.body.data.token);
+    client.log("✅ Employee login successful!");
+  } else {
+    client.log("❌ Employee login failed: " + response.body.message);
+  }
+%}
+
+### @name loginAdmin/supervisor
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "supervisor@hris.com",
+  "password": "admin123"
+}
+
+### @name user emp
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "citra.ningsih@hris.com",
+  "password": "admin123"
+}
+
+
+> {%
+  if (response.status === 200) {
+    client.global.set("adminToken", response.body.data.token);
+    client.log("✅ Admin login successful!");
+  } else {
+    client.log("❌ Admin login failed: " + response.body.message);
+  }
+%}
+
+### @name validateToken
+POST {{baseUrl}}/api/auth/validate
+Authorization: Bearer {{token}}
+
+### @name getCurrentUser
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer {{token}}
+
+### @name loginInvalidCredentials
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "invalid@hris.com",
+  "password": "wrongpassword"
+}
+
+### =====================================================
+### 2. ATTENDANCE ENDPOINTS
+### =====================================================
+
+### @name clockIn
+POST {{baseUrl}}/api/attendance/clock-in
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "latitude": -6.2088,
+  "longitude": 106.8456,
+  "locationAddress": "Jakarta Office",
+  "faceImage": "base64-encoded-face-image-data",
+  "notes": "Regular work day"
+}
+
+### @name clockInOutsideGeofence
+POST {{baseUrl}}/api/attendance/clock-in
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "latitude": -6.3000,
+  "longitude": 106.9000,
+  "locationAddress": "Outside Office",
+  "faceImage": "base64-encoded-face-image-data",
+  "notes": "Working from client location"
+}
+
+### @name clockOut
+POST {{baseUrl}}/api/attendance/clock-out
+Authorization: Bearer {{token}}
+
+### @name getTodayAttendance
+GET {{baseUrl}}/api/attendance/today
+Authorization: Bearer {{token}}
+
+### @name getAttendanceStatus
+GET {{baseUrl}}/api/attendance/status
+Authorization: Bearer {{token}}
+
+### @name getAttendanceHistory
+GET {{baseUrl}}/api/attendance/history
+Authorization: Bearer {{token}}
+
+### @name getAttendanceHistoryPaginated
+GET {{baseUrl}}/api/attendance/history?page=0&size=10
+Authorization: Bearer {{token}}
+
+# =====================================================
+# GET ATTENDANCE BY ID
+# =====================================================
+# This endpoint retrieves a specific attendance record by ID
+# Access Control:
+# - Employees can only view their own attendance records
+# - Supervisors, HR, and Admin can view all attendance records
+# Returns complete attendance details with location, timing, and geofence information
+
+### @name getAttendanceById
+GET {{baseUrl}}/api/attendance/3
+Authorization: Bearer {{token}}
+
+### @name getNonExistentAttendanceById
+GET {{baseUrl}}/api/attendance/999
+Authorization: Bearer {{token}}
+
+### @name getAttendanceByIdAsSupervisor
+GET {{baseUrl}}/api/attendance/6
+Authorization: Bearer {{adminToken}}
+
+### @name clockInTwice
+POST {{baseUrl}}/api/attendance/clock-in
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "latitude": -6.2088,
+  "longitude": 106.8456,
+  "locationAddress": "Jakarta Office",
+  "faceImage": "base64-encoded-face-image-data",
+  "notes": "Second attempt"
+}
+
+### =====================================================
+### 3. LEAVE MANAGEMENT ENDPOINTS
+### =====================================================
+
+### @name submitAnnualLeave
+POST {{baseUrl}}/api/leave/request
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "leaveType": "ANNUAL_LEAVE",
+  "startDate": "2025-12-05",
+  "endDate": "2025-12-05",
+  "reason": "Family vacation - attending wedding ceremony"
+}
+
+> {%
+  if (response.status === 200) {
+    client.global.set("leaveRequestId", response.body.data.id);
+    client.log("✅ Leave request submitted! ID: " + response.body.data.id);
+  }
+%}
+
+### @name submitSickLeave
+POST {{baseUrl}}/api/leave/request
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "leaveType": "SICK_LEAVE",
+  "startDate": "2025-10-05",
+  "endDate": "2025-10-05",
+  "reason": "Medical appointment and recovery"
+}
+
+# =====================================================
+# GET MY LEAVE REQUESTS WITH PAGING
+# =====================================================
+# Supported Parameters:
+# - page: Page number (0-based, default: 0)
+# - size: Items per page (default: 10, max: 100)
+# - days: Filter by last N days (default: 30)
+# Examples:
+#   GET /api/leave/my-requests?page=0&size=5&days=30
+#   GET /api/leave/my-requests?page=1&size=10
+#   GET /api/leave/my-requests?days=7
+# Response includes pagination metadata:
+#   { "data": [...], "size": 5, "total": 23, "totalPages": 5, "currentPage": 1 }
+
+### @name getMyLeaveRequests
+GET {{baseUrl}}/api/leave/my-requests
+Authorization: Bearer {{token}}
+
+### @name loginEmployeeNew
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "employee@hris.com",
+  "password": "admin123"
+}
+
+> {%
+  if (response.status === 200) {
+    client.global.set("token", response.body.data.token);
+    client.log("✅ Employee login successful!");
+  } else {
+    client.log("❌ Employee login failed: " + response.body.message);
+  }
+%}
+
+### @name getMyLeaveRequestsPage1
+GET {{baseUrl}}/api/leave/my-requests?page=2&size=5
+Authorization: Bearer {{token}}
+
+### @name getMyLeaveRequestsPage2
+GET {{baseUrl}}/api/leave/my-requests?page=1&size=5
+Authorization: Bearer {{token}}
+
+### @name getMyLeaveRequests
+GET {{baseUrl}}/api/leave/my-requests
+Authorization: Bearer {{token}}
+
+### @name getMyLeaveRequestsLast7Days
+GET {{baseUrl}}/api/leave/my-requests?page=0&size=10&days=7
+Authorization: Bearer {{token}}
+
+### @name getMyLeaveRequestsLast90Days
+GET {{baseUrl}}/api/leave/my-requests?days=90
+Authorization: Bearer {{token}}
+
+### @name getCurrentLeave
+GET {{baseUrl}}/api/leave/current
+Authorization: Bearer {{token}}
+
+# =====================================================
+# NEW: Get Leave Request by ID
+# =====================================================
+# This endpoint allows retrieving specific leave request details by ID
+# Access Control:
+# - Employees can only view their own leave requests
+# - Supervisors can view subordinate requests
+# - HR/Admin can view all requests
+# Returns full leave request details with createdBy/updatedBy audit trail
+
+### @name getLeaveRequestById
+GET {{baseUrl}}/api/leave/request/{{leaveRequestId}}
+Authorization: Bearer {{token}}
+
+### @name getLeaveRequestByIdAsSupervisor
+GET {{baseUrl}}/api/leave/request/27
+Authorization: Bearer {{adminToken}}
+
+### @name getNonExistentLeaveRequest
+GET {{baseUrl}}/api/leave/request/16
+Authorization: Bearer {{token}}
+
+### @name getNonExistentLeaveRequest999
+GET {{baseUrl}}/api/leave/request/999
+Authorization: Bearer {{token}}
+# Expected: 403 Forbidden with "Access denied." message
+# This ensures no information leakage about whether specific leave request IDs exist
+
+### @name approveLeaveRequest
+POST {{baseUrl}}/api/leave/supervisor/approve/{{leaveRequestId}}
+Authorization: Bearer {{adminToken}}
+
+
+### @name rejectLeaveRequest
+POST {{baseUrl}}/api/leave/supervisor/reject/{{leaveRequestId}}
+Authorization: Bearer {{adminToken}}
+
+{
+  "rejectionReason": "Critical project deadline during this period"
+}
+
+### =====================================================
+### 4. BUSINESS TRAVEL ENDPOINTS
+### =====================================================
+
+### @name submitBusinessTravel
+POST {{baseUrl}}/api/business-travel/request
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "destination": "Bandung, West Java",
+  "description": "Client meeting and project coordination",
+  "startDate": "2025-12-15",
+  "endDate": "2025-12-17",
+  "estimatedCost": 2500000.00
+}
+
+> {%
+  if (response.status === 200) {
+    client.global.set("travelRequestId", response.body.data.id);
+    client.log("✅ Travel request submitted! ID: " + response.body.data.id);
+  }
+%}
+
+### @name getMyTravelRequests
+GET {{baseUrl}}/api/business-travel/my-requests
+Authorization: Bearer {{token}}
+
+### @name approveTravelRequest
+POST {{baseUrl}}/api/business-travel/supervisor/approve/{{travelRequestId}}
+Authorization: Bearer {{adminToken}}
+
+### @name rejectTravelRequest
+POST {{baseUrl}}/api/business-travel/supervisor/reject/{{travelRequestId}}
+Authorization: Bearer {{adminToken}}
+
+### =====================================================
+### 5. HR ADMIN ENDPOINTS
+### =====================================================
+
+### @name registerNewEmployee
+POST {{baseUrl}}/api/admin/register-employee
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "firstName": "Citra",
+  "lastName": "Ningsih",
+  "email": "citra.ningsih@hris.com",
+  "password": "password123",
+  "phoneNumber": "081234567891",
+  "departmentId": 2,
+  "positionId": 3,
+  "supervisorId": 1,
+  "hireDate": "2025-10-02",
+  "annualLeaveBalance": 12,
+  "sickLeaveBalance": 10
+}
+
+> {%
+  if (response.status === 200) {
+    client.global.set("employeeId", response.body.data.id);
+    client.log("✅ Employee registered! ID: " + response.body.data.id);
+  }
+%}
+
+### @name getAllEmployees
+GET {{baseUrl}}/api/admin/employees
+Authorization: Bearer {{adminToken}}
+
+### @name updateEmployee
+PUT {{baseUrl}}/api/admin/employees/{{employeeId}}
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "phoneNumber": "081211112222",
+  "departmentId": 3,
+  "positionId": 4
+}
+
+### @name deactivateEmployee
+POST {{baseUrl}}/api/admin/employees/{{employeeId}}/deactivate
+Authorization: Bearer {{adminToken}}
+
+### =====================================================
+### 6. DATA MIGRATION ENDPOINTS
+### =====================================================
+
+### @name initializeDefaultData
+POST {{baseUrl}}/api/migration/initialize
+Authorization: Bearer {{adminToken}}
+
+### @name getCSVTemplate
+GET {{baseUrl}}/api/migration/csv-template
+Authorization: Bearer {{adminToken}}
+
+### =====================================================
+### 7. ERROR HANDLING TESTS
+### =====================================================
+
+### @name unauthorizedAccess
+GET {{baseUrl}}/api/attendance/history
+
+### @name invalidToken
+GET {{baseUrl}}/api/attendance/history
+Authorization: Bearer invalid-token-here
+
+### @name forbiddenAccess
+GET {{baseUrl}}/api/admin/employees
+Authorization: Bearer {{token}}
+
+### =====================================================
+### 8. UTILITY ENDPOINTS
+### =====================================================
+
+### @name generatePasswordHash
+GET {{baseUrl}}/api/auth/debug/hash?password=newpassword123
+Authorization: Bearer {{adminToken}}
+
+### =====================================================
+### TESTING INSTRUCTIONS
+### =====================================================
+
+# 1. SETUP:
+#    - Start the application: ./mvnw spring-boot:run -Dspring-boot.run.jvmArguments="-Dserver.port=8083"
+#    - Ensure database is running: docker-compose up -d
+#    - Initialize default data: Run the "initializeDefaultData" request
+#    - Application will be available at http://localhost:8083
+
+# 2. AUTHENTICATION:
+#    - Run "loginEmployee" to get employee token
+#    - Run "loginAdmin" to get admin token
+#    - Tokens are automatically stored in variables
+
+# 3. WORKFLOW TESTING:
+#    - Employee Flow: Clock In → Clock Out → Check History → Get Attendance by ID
+#    - Leave Flow: Submit Leave → Get Leave by ID → Supervisor Approve/Reject
+#    - Travel Flow: Submit Travel → Supervisor Approve/Reject
+#    - Admin Flow: Register Employee → Manage Records
+
+# 4. PAGING TESTING:
+#    - Leave Requests Paging: getMyLeaveRequestsPage1 → getMyLeaveRequestsPage2 → getMyLeaveRequestsPageSize3
+#    - Attendance History Paging: getAttendanceHistoryPaginated
+#    - Parameters: page (0-based), size (items per page), days (filter by last N days)
+#    - Example: GET /api/leave/my-requests?page=0&size=5&days=30
+
+# 5. ATTENDANCE BY ID TESTING:
+#    - Get own attendance record: getAttendanceById (using employee token)
+#    - Get attendance as supervisor: getAttendanceByIdAsSupervisor (using admin token)
+#    - Test error handling: getNonExistentAttendanceById
+#    - Access Control: Employees can only view their own records, supervisors can view all
+
+# 6. RESPONSE FORMAT:
+#    - Success: {"data": {...}, "message": "..."}
+#    - Error: {"data": null, "message": "Error description"}
+#    - HTTP Status Codes indicate success/failure
+#    - Paginated Response: {"data": [...], "size": perPage, "total": totalItems, "totalPages": N, "currentPage": N}
+
+### =====================================================
+### END OF API TESTING SUITE
+### =====================================================

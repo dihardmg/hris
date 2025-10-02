@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,6 +34,15 @@ public class LeaveRequestService {
             throw new RuntimeException("Start date cannot be after end date");
         }
 
+        // Validate that dates are not in the past
+        LocalDate today = LocalDate.now();
+        if (requestDto.getStartDate().isBefore(today)) {
+            throw new RuntimeException("Start date cannot be in the past");
+        }
+        if (requestDto.getEndDate().isBefore(today)) {
+            throw new RuntimeException("End date cannot be in the past");
+        }
+
         int overlappingLeaves = leaveRequestRepository.countOverlappingLeaves(
             employeeId,
             requestDto.getStartDate(),
@@ -43,6 +53,15 @@ public class LeaveRequestService {
             throw new RuntimeException("You already have approved leave during this period");
         }
 
+        // Calculate total days automatically first
+        long totalDays = java.time.temporal.ChronoUnit.DAYS.between(
+            requestDto.getStartDate(),
+            requestDto.getEndDate()
+        ) + 1; // Include both start and end dates
+
+        // Set total days in DTO for validation
+        requestDto.setTotalDays((int) totalDays);
+
         validateLeaveBalance(employee, requestDto);
 
         LeaveRequest leaveRequest = new LeaveRequest();
@@ -50,9 +69,10 @@ public class LeaveRequestService {
         leaveRequest.setLeaveType(requestDto.getLeaveType());
         leaveRequest.setStartDate(requestDto.getStartDate());
         leaveRequest.setEndDate(requestDto.getEndDate());
-        leaveRequest.setTotalDays(requestDto.getTotalDays());
+        leaveRequest.setTotalDays((int) totalDays);
         leaveRequest.setReason(requestDto.getReason());
         leaveRequest.setStatus(LeaveRequest.RequestStatus.PENDING);
+        leaveRequest.setCreatedBy(employee);
 
         LeaveRequest savedRequest = leaveRequestRepository.save(leaveRequest);
         log.info("Leave request created for employee {} from {} to {}",
@@ -62,7 +82,7 @@ public class LeaveRequestService {
     }
 
     @Transactional
-    public LeaveRequest approveLeaveRequest(Long requestId, Long supervisorId, String notes) {
+    public LeaveRequest approveLeaveRequest(Long requestId, Long supervisorId) {
         LeaveRequest leaveRequest = leaveRequestRepository.findById(requestId)
             .orElseThrow(() -> new RuntimeException("Leave request not found"));
 
@@ -83,9 +103,7 @@ public class LeaveRequestService {
         deductLeaveBalance(employee, leaveRequest);
 
         leaveRequest.setStatus(LeaveRequest.RequestStatus.APPROVED);
-        leaveRequest.setApprovedBy(supervisor);
-        leaveRequest.setApprovalDate(java.time.LocalDateTime.now());
-        leaveRequest.setRejectionReason(notes);
+        leaveRequest.setUpdatedBy(supervisor);
 
         LeaveRequest savedRequest = leaveRequestRepository.save(leaveRequest);
         log.info("Leave request {} approved by supervisor {}",
@@ -95,7 +113,7 @@ public class LeaveRequestService {
     }
 
     @Transactional
-    public LeaveRequest rejectLeaveRequest(Long requestId, Long supervisorId, String rejectionReason) {
+    public LeaveRequest rejectLeaveRequest(Long requestId, Long supervisorId) {
         LeaveRequest leaveRequest = leaveRequestRepository.findById(requestId)
             .orElseThrow(() -> new RuntimeException("Leave request not found"));
 
@@ -112,13 +130,11 @@ public class LeaveRequestService {
         }
 
         leaveRequest.setStatus(LeaveRequest.RequestStatus.REJECTED);
-        leaveRequest.setApprovedBy(supervisor);
-        leaveRequest.setApprovalDate(java.time.LocalDateTime.now());
-        leaveRequest.setRejectionReason(rejectionReason);
+        leaveRequest.setUpdatedBy(supervisor);
 
         LeaveRequest savedRequest = leaveRequestRepository.save(leaveRequest);
-        log.info("Leave request {} rejected by supervisor {} for reason: {}",
-                requestId, supervisor.getEmployeeId(), rejectionReason);
+        log.info("Leave request {} rejected by supervisor {}",
+                requestId, supervisor.getEmployeeId());
 
         return savedRequest;
     }
@@ -129,6 +145,17 @@ public class LeaveRequestService {
     }
 
     @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<LeaveRequest> getEmployeeLeaveRequests(Long employeeId, org.springframework.data.domain.Pageable pageable) {
+        return leaveRequestRepository.findByEmployeeIdOrderByCreatedAtDesc(employeeId, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<LeaveRequest> getEmployeeLeaveRequests(Long employeeId, org.springframework.data.domain.Pageable pageable, int days) {
+        LocalDateTime startDate = LocalDate.now().minusDays(days).atStartOfDay();
+        return leaveRequestRepository.findByEmployeeIdAndCreatedAtAfter(employeeId, startDate, pageable);
+    }
+
+    @Transactional(readOnly = true)
     public List<LeaveRequest> getPendingRequestsForSupervisor(Long supervisorId) {
         return leaveRequestRepository.findPendingRequestsBySupervisor(supervisorId);
     }
@@ -136,6 +163,11 @@ public class LeaveRequestService {
     @Transactional(readOnly = true)
     public Optional<LeaveRequest> getCurrentLeave(Long employeeId) {
         return leaveRequestRepository.findCurrentLeave(employeeId, LocalDate.now());
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<LeaveRequest> getLeaveRequestById(Long requestId) {
+        return leaveRequestRepository.findById(requestId);
     }
 
     private void validateLeaveBalance(Employee employee, LeaveRequestDto requestDto) {
@@ -149,7 +181,7 @@ public class LeaveRequestService {
         }
     }
 
-    private int getAvailableLeaveBalance(Employee employee, LeaveRequest.LeaveType leaveType) {
+    public int getAvailableLeaveBalance(Employee employee, LeaveRequest.LeaveType leaveType) {
         switch (leaveType) {
             case ANNUAL_LEAVE:
                 return employee.getAnnualLeaveBalance();

@@ -47,25 +47,21 @@ public class LeaveRequest {
     @Enumerated(EnumType.STRING)
     private RequestStatus status = RequestStatus.PENDING;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "approved_by")
-    private Employee approvedBy;
-
-    @Column(name = "approved_by_id", insertable = false, updatable = false)
-    private Long approvedById;
-
-    @Column(name = "approval_date")
-    private LocalDateTime approvalDate;
-
-    @Column(name = "rejection_reason")
-    private String rejectionReason;
-
+  
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by")
+    private Employee createdBy;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "updated_by")
+    private Employee updatedBy;
 
     public enum LeaveType {
         ANNUAL_LEAVE, SICK_LEAVE, MATERNITY_LEAVE, PATERNITY_LEAVE, UNPAID_LEAVE, COMPASSIONATE_LEAVE
