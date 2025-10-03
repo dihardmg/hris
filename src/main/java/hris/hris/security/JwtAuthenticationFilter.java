@@ -1,5 +1,8 @@
 package hris.hris.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import hris.hris.exception.JwtTokenExpiredException;
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -15,6 +18,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.Map;
 
 @Component
 @Slf4j
@@ -40,8 +47,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             jwtToken = requestTokenHeader.substring(7);
             try {
                 email = jwtUtil.getEmailFromToken(jwtToken);
+            } catch (ExpiredJwtException e) {
+                log.warn("JWT Token has expired: {}", e.getMessage());
+                handleExpiredToken(response, request);
+                return;
             } catch (Exception e) {
                 log.warn("Unable to get JWT Token: {}", e.getMessage());
+                handleInvalidToken(response, request);
+                return;
             }
         }
 
@@ -68,5 +81,37 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                path.startsWith("/api/public/") ||
                path.startsWith("/h2-console") ||
                path.startsWith("/actuator");
+    }
+
+    private void handleExpiredToken(HttpServletResponse response, HttpServletRequest request) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+
+        Map<String, Object> errorResponse = new HashMap<>();
+        errorResponse.put("status", HttpServletResponse.SC_UNAUTHORIZED);
+        errorResponse.put("error", "Unauthorized");
+        errorResponse.put("message", "JWT token has expired. Please refresh your token or login again.");
+        errorResponse.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        errorResponse.put("path", request.getRequestURI());
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
+    }
+
+    private void handleInvalidToken(HttpServletResponse response, HttpServletRequest request) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+
+        Map<String, Object> errorResponse = new HashMap<>();
+        errorResponse.put("status", HttpServletResponse.SC_UNAUTHORIZED);
+        errorResponse.put("error", "Unauthorized");
+        errorResponse.put("message", "Invalid JWT token. Please provide a valid token.");
+        errorResponse.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        errorResponse.put("path", request.getRequestURI());
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
     }
 }
