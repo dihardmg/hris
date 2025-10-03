@@ -13,15 +13,14 @@
 # --- AUTHENTICATION TOKENS ---
 ### @token = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJlbXBsb3llZUBocmlzLmNvbSIsImVtcGxveWVlSWQiOjQsImVtcGxveWVlQ29kZSI6IkVNUDAwMSIsImlhdCI6MTc1OTQxODg4NiwiZXhwIjoxNzU5NTA1Mjg2fQ.Tt0sukhGoydJshsxOg4SVrw80tUiH1h2y4mdX8RAL01Ej7bu0M53LRIY0xwskqCL
 
-@token = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJjaXRyYS5uaW5nc2loQGhyaXMuY29tIiwiZW1wbG95ZWVJZCI6NDE0NiwiZW1wbG95ZWVDb2RlIjoiRU1QNjcxMzkiLCJ0aW1lem9uZSI6IkFzaWEvSmFrYXJ0YSIsImlhdCI6MTc1OTQ3NTg1NywiZXhwIjoxNzU5NDc2MTU3fQ.U6pFgOAkJKf3I6mZew6NF5DHq_nHWsjacndnphzvlp_UT6BB6GRLKfKtA9FhFWfk
-@adminToken = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJzdXBlcnZpc29yQGhyaXMuY29tIiwiZW1wbG95ZWVJZCI6MywiZW1wbG95ZWVDb2RlIjoiU1VQMDAxIiwiaWF0IjoxNzU5NDAwNTcyLCJleHAiOjE3NTk0ODY5NzJ9.iwf0pfv1Z9JCC3dxa7-E_AO_yzFtDzk7ahPts54pw9aiLfh3IWj2Umq_4sY0bX-u
+@token = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJjaXRyYS5uaW5nc2loQGhyaXMuY29tIiwiZW1wbG95ZWVJZCI6NDE0NiwiZW1wbG95ZWVDb2RlIjoiRU1QNjcxMzkiLCJ0aW1lem9uZSI6IkFzaWEvSmFrYXJ0YSIsImlhdCI6MTc1OTQ3ODEwMiwiZXhwIjoxNzU5NTY0NTAyfQ.0EXWCTtYj2aLdIFEg4l08aegtPhaj8v0eqQmyhgwN55xpaGSFiCxWi_e1NeCY9QT
+
+@adminToken = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJzdXBlcnZpc29yQGhyaXMuY29tIiwiZW1wbG95ZWVJZCI6MywiZW1wbG95ZWVDb2RlIjoiU1VQMDAxIiwidGltZXpvbmUiOiJBc2lhL0pha2FydGEiLCJpYXQiOjE3NTk0NzcwMDgsImV4cCI6MTc1OTQ3NzMwOH0.DFPl8C_PGiws5qYJbVlCAKa8Ts9WMzrGRjYB9JC0yB8v6K8SucxaKSbEq7sMVsC7
 
 # --- DYNAMIC VARIABLES ---
 @employeeId = 4146
-@leaveRequestId = 15
-@travelRequestId = 1
 @attendanceUuid = 74dfbcdd-8ae8-4476-8f58-ae81f367da54
-@leaveRequestUuid = 3e1a8a57-d663-4c22-b345-87b766db1516
+@leaveRequestUuid = 71f4bd0a-9fe5-47ed-b8bb-8af04bc30c23
 
 ### =====================================================
 ### 1. AUTHENTICATION ENDPOINTS
@@ -187,8 +186,8 @@ Authorization: Bearer {{token}}
 
 {
   "leaveType": "ANNUAL_LEAVE",
-  "startDate": "2025-12-06",
-  "endDate": "2025-12-06",
+  "startDate": "2025-12-07",
+  "endDate": "2025-12-08",
   "reason": "Family vacation - attending wedding ceremony"
 }
 
@@ -248,7 +247,7 @@ Content-Type: application/json
 %}
 
 ### @name getMyLeaveRequestsPage1
-GET {{baseUrl}}/api/leave/my-requests?page=2&size=5
+GET {{baseUrl}}/api/leave/my-requests?page=1&size=2
 Authorization: Bearer {{token}}
 
 ### @name getMyLeaveRequestsPage2
