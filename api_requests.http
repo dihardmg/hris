@@ -58,8 +58,8 @@ POST {{baseUrl}}/api/auth/login
 Content-Type: application/json
 
 {
-  "email": "citra.ningsih@hris.com",
-  "password": "admin123"
+  "email": "mcrdik@gmail.com",
+  "password": "NewSecurePassword123!"
 }
 
 
@@ -79,6 +79,121 @@ Authorization: Bearer {{token}}
 ### @name getCurrentUser
 GET {{baseUrl}}/api/auth/me
 Authorization: Bearer {{token}}
+
+### =====================================================
+### 1.5. PASSWORD RESET ENDPOINTS
+### =====================================================
+
+### @name requestPasswordReset
+POST {{baseUrl}}/api/auth/password-reset/forgot
+Content-Type: application/json
+
+{
+  "email": "mcrdik@gmail.com"
+}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ Password reset request sent successfully!");
+    client.log("Response: " + response.body.message);
+  } else {
+    client.log("❌ Password reset request failed: " + response.body.message);
+  }
+%}
+
+### @name requestPasswordResetInvalidEmail
+POST {{baseUrl}}/api/auth/password-reset/forgot
+Content-Type: application/json
+
+{
+  "email": "nonexistent@hris.com"
+}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ Email enumeration protection working - returns success for invalid email");
+  } else {
+    client.log("❌ Unexpected response for invalid email: " + response.body.message);
+  }
+%}
+
+### @name requestPasswordResetInvalidFormat
+POST {{baseUrl}}/api/auth/password-reset/forgot
+Content-Type: application/json
+
+{
+  "email": "invalid-email-format"
+}
+
+### @name verifyResetToken
+GET {{baseUrl}}/api/auth/password-reset/verify-token?token=7ca8e460-4604-484d-908f-c57818c3e381
+
+### @name resetPasswordWithValidToken
+POST {{baseUrl}}/api/auth/password-reset/reset
+Content-Type: application/json
+
+{
+  "token": "7ca8e460-4604-484d-908f-c57818c3e381",
+  "newPassword": "NewSecurePassword1234!",
+  "confirmPassword": "NewSecurePassword1234!"
+}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ Password reset successful!");
+    client.log("Response: " + response.body.message);
+  } else {
+    client.log("❌ Password reset failed: " + response.body.message);
+  }
+%}
+
+### @name resetPasswordWithWeakPassword
+POST {{baseUrl}}/api/auth/password-reset/reset
+Content-Type: application/json
+
+{
+  "token": "b53d0cb9-6bc8-4bc5-961f-d92ec14d9bd3",
+  "newPassword": "Terserah123@",
+  "confirmPassword": "Terserah123@"
+}
+
+### @name resetPasswordWithMismatch
+POST {{baseUrl}}/api/auth/password-reset/reset
+Content-Type: application/json
+
+{
+  "token": "valid-reset-token-here",
+  "newPassword": "NewSecurePassword123!",
+  "confirmPassword": "DifferentPassword123!"
+}
+
+### @name resetPasswordWithInvalidToken
+POST {{baseUrl}}/api/auth/password-reset/reset
+Content-Type: application/json
+
+{
+  "token": "invalid-or-expired-token",
+  "newPassword": "NewSecurePassword123!",
+  "confirmPassword": "NewSecurePassword123!"
+}
+
+### @name resetPasswordRequestTest
+POST {{baseUrl}}/api/auth/password-reset/forgot
+Content-Type: application/json
+
+{
+  "email": "citra.ningsih@hris.com"
+}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ Password reset email sent to citra.ningsih@hris.com");
+    client.log("📧 Check your email for the reset link");
+    client.log("🔗 Token will be valid for 1 hour");
+  } else {
+    client.log("❌ Failed to send password reset email");
+  }
+%}
 
 ### @name loginInvalidCredentials
 POST {{baseUrl}}/api/auth/login
@@ -449,6 +564,7 @@ Authorization: Bearer {{adminToken}}
 #    - Leave Flow: Submit Leave → Get Leave by ID → Supervisor Approve/Reject
 #    - Travel Flow: Submit Travel → Supervisor Approve/Reject
 #    - Admin Flow: Register Employee → Manage Records
+#    - Password Reset Flow: Request Reset → Receive Email → Reset Password → Login with New Password
 
 # 4. PAGING TESTING:
 #    - Leave Requests Paging: getMyLeaveRequestsPage1 → getMyLeaveRequestsPage2 → getMyLeaveRequestsPageSize3
@@ -468,6 +584,7 @@ Authorization: Bearer {{adminToken}}
 #    - IDOR PREVENTION: Prevents Insecure Direct Object Reference attacks
 #    - ACCESS CONTROL: Role-based authorization with proper permission checks
 #    - NO INFORMATION LEAKAGE: 404 errors for non-existent UUIDs, not 403
+#    - PASSWORD RESET SECURITY: Email enumeration protection, token expiration, rate limiting
 #    - Examples: /api/attendance/550e8400-e29b-41d4-a716-446655440000
 
 # 7. RESPONSE FORMAT:
@@ -475,6 +592,38 @@ Authorization: Bearer {{adminToken}}
 #    - Error: {"data": null, "message": "Error description"}
 #    - HTTP Status Codes indicate success/failure
 #    - Paginated Response: {"data": [...], "size": perPage, "total": totalItems, "totalPages": N, "currentPage": N}
+#    - Password Reset Response: {"message": "...", "expiresIn": "...", "success": true/false}
+
+# 8. PASSWORD RESET TESTING WORKFLOW:
+#    1. Request Password Reset: requestPasswordReset (send email)
+#    2. Check Email for Reset Link (manual step - check Gmail)
+#    3. Extract Token from Email URL or use resetPasswordRequestTest for specific user
+#    4. Verify Token: verifyResetToken (optional validation step)
+#    5. Reset Password: resetPasswordWithValidToken (update password)
+#    6. Test Login: Login with new password to verify success
+#
+#    SECURITY TESTS:
+#    - Email Enumeration: requestPasswordResetInvalidEmail (should return success)
+#    - Input Validation: requestPasswordResetInvalidFormat (should return 400)
+#    - Token Validation: verifyResetToken with invalid token (should return false)
+#    - Password Strength: resetPasswordWithWeakPassword (should return 400)
+#    - Password Mismatch: resetPasswordWithMismatch (should return 400)
+#    - Invalid Token: resetPasswordWithInvalidToken (should return 400)
+#    - Rate Limiting: Multiple rapid requests (should be limited to 3/hour)
+
+# 9. PASSWORD REQUIREMENTS:
+#    - Minimum 12 characters
+#    - Must contain: Uppercase letter, lowercase letter, number, special character
+#    - Cannot reuse last 5 passwords
+#    - Rate limiting: 3 requests per hour per email
+#    - Token expiration: 1 hour
+#    - Single use: Tokens become invalid after successful reset
+
+# 10. EMAIL CONFIGURATION:
+#     - SMTP: Gmail (smtp.gmail.com:587)
+#     - Email: smtp.dihardmg@gmail.com
+#     - Check spam folder if email not received
+#     - Reset links valid for: http://localhost:3000/reset-password?token=TOKEN
 
 ### =====================================================
 ### END OF API TESTING SUITE

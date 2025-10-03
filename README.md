@@ -6,9 +6,11 @@ A comprehensive **HRIS and Attendance Management System** backend built with **S
 ## 🚀 Features Implemented
 
 ### Authentication & Security
-- ✅ **JWT-based authentication** with secure token management
+- ✅ **JWT-based authentication** with secure token management (WIB timezone support)
+- ✅ **Password reset functionality** with secure token-based workflow
 - ✅ **Rate limiting** (5 attempts per 5 minutes) to prevent brute force attacks
 - ✅ **Password encryption** using BCrypt
+- ✅ **Password history tracking** (prevents reuse of last 5 passwords)
 - ✅ **Role-based access control** (ADMIN, HR, SUPERVISOR, EMPLOYEE)
 
 ### Attendance Management
@@ -56,6 +58,11 @@ A comprehensive **HRIS and Attendance Management System** backend built with **S
 - `POST /api/auth/login` - Employee login
 - `POST /api/auth/validate` - Token validation
 - `GET /api/auth/me` - Get current user info
+
+### Password Reset
+- `POST /api/auth/password-reset/forgot` - Request password reset link
+- `POST /api/auth/password-reset/reset` - Reset password with token
+- `GET /api/auth/password-reset/verify-token` - Verify reset token validity
 
 ### Attendance
 - `POST /api/attendance/clock-in` - Clock in with face verification
@@ -158,6 +165,8 @@ The system uses **Flyway** for database version control and migrations. All sche
 - **attendances** - Attendance records with location and face verification
 - **leave_requests** - Leave request records with approval workflow
 - **business_travel_requests** - Business travel requests
+- **password_reset_tokens** - Password reset token management
+- **password_history** - Password history for reuse prevention
 - **roles** - User role definitions
 - **user_roles** - Many-to-many user-role mapping
 
@@ -204,9 +213,33 @@ spring.flyway.validate-on-migrate=true
 jwt.secret=hris_jwt_secret_key_2024_very_long_secure_key_for_jwt_tokens
 jwt.expiration=86400000 # 24 hours
 
+# Password Reset Configuration
+app.password-reset.token-expiration=3600000 # 1 hour
+app.password-reset.max-attempts=3
+app.password-reset.rate-limit-duration=3600000 # 1 hour
+app.password-check.history-limit=5
+app.frontend.url=http://localhost:3000
+
+# Mail Configuration
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=smtp.dihardmg@gmail.com
+spring.mail.password=Terserah123;
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+
 # Rate Limiting
 rate.limit.attempts=5
 rate.limit.window=300000 # 5 minutes
+
+# Resilience4j Configuration (Password Reset Rate Limiting)
+resilience4j.ratelimiter.instances.password-reset-request.limit-for-period=3
+resilience4j.ratelimiter.instances.password-reset-request.limit-refresh-period=1h
+resilience4j.ratelimiter.instances.password-reset-request.timeout-duration=5s
+
+resilience4j.ratelimiter.instances.password-reset-confirm.limit-for-period=5
+resilience4j.ratelimiter.instances.password-reset-confirm.limit-refresh-period=1h
+resilience4j.ratelimiter.instances.password-reset-confirm.timeout-duration=5s
 
 # Face Recognition
 face.recognition.threshold=0.7
@@ -220,9 +253,12 @@ geofence.radius=100.0
 ## 🔒 Security Features
 
 ### Authentication
-- **JWT tokens** with configurable expiration
+- **JWT tokens** with configurable expiration (WIB timezone support)
+- **Password reset workflow** with secure token management
 - **Password encryption** using BCrypt
+- **Password history tracking** (prevents reuse of last 5 passwords)
 - **Rate limiting** to prevent brute force attacks
+- **Email notifications** for password reset requests
 
 ### Authorization
 - **Role-based access control** with method-level security
@@ -319,27 +355,101 @@ The API provides comprehensive error handling:
 - ✅ **Role-based access** ensures proper authorization
 - ✅ **Password encryption** protects credentials
 - ✅ **JWT validation** prevents token tampering
+- ✅ **Password reset security** with token expiration and rate limiting
+- ✅ **Email enumeration protection** in password reset flow
+- ✅ **Password history enforcement** prevents password reuse
+- ✅ **Secure email delivery** with HTML templates
 
 ### Best Practices Followed
 - ✅ **Principle of least privilege** for role assignments
 - ✅ **Secure defaults** for all configurations
 - ✅ **Comprehensive logging** for audit trails
 - ✅ **Error handling** prevents information leakage
+- ✅ **Password reset flow** prevents email enumeration attacks
+- ✅ **Token-based password reset** with proper expiration handling
+- ✅ **Password strength validation** with comprehensive requirements
 
 ## 🔄 Future Enhancements
 
 ### Planned Features
-- **Email notifications** for approvals
+- **Advanced email notifications** for approvals and system events
 - **Advanced reporting** with charts and analytics
 - **Mobile app integration** for biometric capture
 - **Integration with HR systems** (payroll, etc.)
 - **Advanced scheduling** and shift management
+- **Multi-factor authentication** for enhanced security
+- **Self-service password management** portal
 
 ### Scalability Considerations
 - **Horizontal scaling** support
 - **Database optimization** for large datasets
 - **Caching strategies** for improved performance
 - **Load balancing** ready architecture
+
+## 🔐 Password Reset API Usage
+
+### Request Password Reset
+```bash
+curl -X POST http://localhost:8081/api/auth/password-reset/forgot \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com"
+  }'
+```
+
+**Response:**
+```json
+{
+  "message": "If an account with this email exists, a password reset link has been sent.",
+  "expiresIn": "1 hour",
+  "success": true
+}
+```
+
+### Reset Password
+```bash
+curl -X POST http://localhost:8081/api/auth/password-reset/reset \
+  -H "Content-Type: application/json" \
+  -d '{
+    "token": "reset-token-here",
+    "newPassword": "NewSecurePassword123!",
+    "confirmPassword": "NewSecurePassword123!"
+  }'
+```
+
+**Response:**
+```json
+{
+  "message": "Password has been successfully reset.",
+  "success": true
+}
+```
+
+### Verify Reset Token
+```bash
+curl -X GET "http://localhost:8081/api/auth/password-reset/verify-token?token=reset-token-here"
+```
+
+**Response:**
+```json
+{
+  "valid": true,
+  "message": "Token is valid"
+}
+```
+
+### Password Requirements
+- **Minimum length**: 12 characters
+- **Must contain**: Uppercase letter, lowercase letter, number, and special character
+- **History check**: Cannot reuse last 5 passwords
+- **Rate limiting**: 3 requests per hour per email
+
+### Security Features
+- **Email enumeration protection**: Generic responses prevent email discovery
+- **Token expiration**: Reset links expire after 1 hour
+- **Single use**: Tokens become invalid after use
+- **Rate limiting**: Prevents brute force attacks
+- **Audit logging**: All reset attempts are logged
 
 ---
 

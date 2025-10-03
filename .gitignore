@@ -37,3 +37,34 @@ build/
 .gitattributes
 mvnw
 .mvn
+
+### Environment & Security ###
+# Application properties with sensitive data
+application-dev.properties
+application-local.properties
+application-prod.properties
+application-staging.properties
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.production
+.env.staging
+
+# Log files
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
