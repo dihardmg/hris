@@ -8,6 +8,7 @@ import hris.hris.security.CustomUserDetailsService;
 import hris.hris.security.JwtUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -15,6 +16,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Date;
 
 @Service
 @Slf4j
@@ -31,6 +36,9 @@ public class AuthenticationService {
 
     @Autowired
     private EmployeeRepository employeeRepository;
+
+    @Value("${jwt.expiration}")
+    private Long jwtExpiration;
 
     @Transactional
     public LoginResponse authenticateUser(LoginRequest loginRequest) {
@@ -56,6 +64,14 @@ public class AuthenticationService {
 
             log.info("Authentication successful for user: {}", loginRequest.getEmail());
 
+            // Calculate token expiration time
+            Date expiresAt = new Date(System.currentTimeMillis() + jwtExpiration);
+
+            // Calculate WIB expiration time
+            ZonedDateTime expiresAtWIB = ZonedDateTime.now(java.time.ZoneId.of("Asia/Jakarta"))
+                .plusMinutes(jwtExpiration / 60000);
+            String expiresAtWIBString = expiresAtWIB.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z"));
+
             return LoginResponse.builder()
                 .token(token)
                 .employeeId(employee.getId())
@@ -63,6 +79,8 @@ public class AuthenticationService {
                 .firstName(employee.getFirstName())
                 .lastName(employee.getLastName())
                 .email(employee.getEmail())
+                .expiresAt(expiresAt)
+                .expiresAtWIB(expiresAtWIBString)
                 .build();
 
         } catch (BadCredentialsException e) {

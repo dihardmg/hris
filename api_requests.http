@@ -7,13 +7,13 @@
 ### =====================================================
 
 # --- ENVIRONMENT VARIABLES ---
-@hostname = localhost:8083
+@hostname = localhost:8081
 @baseUrl = http://{{hostname}}
 
 # --- AUTHENTICATION TOKENS ---
 ### @token = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJlbXBsb3llZUBocmlzLmNvbSIsImVtcGxveWVlSWQiOjQsImVtcGxveWVlQ29kZSI6IkVNUDAwMSIsImlhdCI6MTc1OTQxODg4NiwiZXhwIjoxNzU5NTA1Mjg2fQ.Tt0sukhGoydJshsxOg4SVrw80tUiH1h2y4mdX8RAL01Ej7bu0M53LRIY0xwskqCL
 
-@token = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJjaXRyYS5uaW5nc2loQGhyaXMuY29tIiwiZW1wbG95ZWVJZCI6NDE0NiwiZW1wbG95ZWVDb2RlIjoiRU1QNjcxMzkiLCJpYXQiOjE3NTk0MjAxNjcsImV4cCI6MTc1OTUwNjU2N30.RI6hOEVgjJWBI0adkp6wFK4Z1A7CzPw1xBuMK1VS2gYlXwtpJ114-W13dhbUUP9L
+@token = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJjaXRyYS5uaW5nc2loQGhyaXMuY29tIiwiZW1wbG95ZWVJZCI6NDE0NiwiZW1wbG95ZWVDb2RlIjoiRU1QNjcxMzkiLCJ0aW1lem9uZSI6IkFzaWEvSmFrYXJ0YSIsImlhdCI6MTc1OTQ3MjY1OCwiZXhwIjoxNzU5NDc0NDU4fQ.t_FSc1yyZHs1vcHjA4p-Uliinp0g2H-vikaK3h0ikSvdmgEU0QnSEgPq_6ak0cKZ
 @adminToken = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJzdXBlcnZpc29yQGhyaXMuY29tIiwiZW1wbG95ZWVJZCI6MywiZW1wbG95ZWVDb2RlIjoiU1VQMDAxIiwiaWF0IjoxNzU5NDAwNTcyLCJleHAiOjE3NTk0ODY5NzJ9.iwf0pfv1Z9JCC3dxa7-E_AO_yzFtDzk7ahPts54pw9aiLfh3IWj2Umq_4sY0bX-u
 
 # --- DYNAMIC VARIABLES ---
@@ -60,7 +60,7 @@ Content-Type: application/json
 
 {
   "email": "citra.ningsih@hris.com",
-  "password": "admin1236"
+  "password": "admin123"
 }
 
 
@@ -137,7 +137,7 @@ GET {{baseUrl}}/api/attendance/history
 Authorization: Bearer {{token}}
 
 ### @name getAttendanceHistoryPaginated
-GET {{baseUrl}}/api/attendance/history?page=0&size=1
+GET {{baseUrl}}/api/attendance/history?page=0&size=5
 Authorization: Bearer {{token}}
 
 # =====================================================

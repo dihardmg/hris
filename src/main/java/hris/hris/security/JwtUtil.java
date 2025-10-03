@@ -7,6 +7,10 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
+import java.util.TimeZone;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.Instant;
 
 @Component
 public class JwtUtil {
@@ -22,13 +26,21 @@ public class JwtUtil {
     }
 
     public String generateToken(String email, Long employeeId, String employeeIdStr) {
-        Date expiryDate = new Date(System.currentTimeMillis() + expiration);
+        // Use WIB (Asia/Jakarta) timezone
+        ZoneId jakartaZone = ZoneId.of("Asia/Jakarta");
+        ZonedDateTime nowJakarta = ZonedDateTime.now(jakartaZone);
+        ZonedDateTime expiryJakarta = nowJakarta.plusMinutes(expiration / 60000); // Convert milliseconds to minutes
+
+        // Convert to Date for JWT
+        Date currentTime = Date.from(nowJakarta.toInstant());
+        Date expiryDate = Date.from(expiryJakarta.toInstant());
 
         return Jwts.builder()
                 .setSubject(email)
                 .claim("employeeId", employeeId)
                 .claim("employeeCode", employeeIdStr)
-                .setIssuedAt(new Date())
+                .claim("timezone", "Asia/Jakarta")
+                .setIssuedAt(currentTime)
                 .setExpiration(expiryDate)
                 .signWith(getSigningKey())
                 .compact();
