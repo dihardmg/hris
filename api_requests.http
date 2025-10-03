@@ -59,7 +59,7 @@ Content-Type: application/json
 
 {
   "email": "mcrdik@gmail.com",
-  "password": "NewSecurePassword123!"
+  "password": "admin123!"
 }
 
 
@@ -89,7 +89,7 @@ POST {{baseUrl}}/api/auth/password-reset/forgot
 Content-Type: application/json
 
 {
-  "email": "dihardmg@gmail.com"
+  "email": "mcrdik@gmail.com"
 }
 
 > {%
@@ -126,16 +126,16 @@ Content-Type: application/json
 }
 
 ### @name verifyResetToken
-GET {{baseUrl}}/api/auth/password-reset/verify-token?token=f930ccd8-5193-46ed-b0bb-556ad5e6909b
+GET {{baseUrl}}/api/auth/password-reset/verify-token?token=5472728a-3943-47ad-ac04-cf8388e2dae2
 
 ### @name resetPasswordWithValidToken
 POST {{baseUrl}}/api/auth/password-reset/reset
 Content-Type: application/json
 
 {
-  "token": "f930ccd8-5193-46ed-b0bb-556ad5e6909b",
-  "newPassword": "NewSecurePassword123456!",
-  "confirmPassword": "NewSecurePassword123456!"
+  "token": "5472728a-3943-47ad-ac04-cf8388e2dae2",
+  "newPassword": "admin123!",
+  "confirmPassword": "admin123!"
 }
 
 > {%
