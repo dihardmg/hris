@@ -89,7 +89,7 @@ POST {{baseUrl}}/api/auth/password-reset/forgot
 Content-Type: application/json
 
 {
-  "email": "mcrdik@gmail.com"
+  "email": "lareosenglab@gmail.com"
 }
 
 > {%

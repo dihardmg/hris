@@ -132,7 +132,7 @@ public class EmailService {
 
                         <p>For security reasons, please make sure your new password:</p>
                         <ul>
-                            <li>Is at least 12 characters long</li>
+                            <li>Is at least 6 characters long</li>
                             <li>Contains uppercase and lowercase letters</li>
                             <li>Contains at least one number</li>
                             <li>Contains at least one special character</li>

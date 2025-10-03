@@ -132,7 +132,7 @@ src/main/java/hris/hris/
 
 3. **Run the Application**
    ```bash
-   ./mvnw spring-boot:run
+   mvn clean spring-boot:run -Dspring-boot.run.profiles=dev
    ```
 
 4. **Initialize Default Data**
