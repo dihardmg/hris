@@ -89,7 +89,7 @@ POST {{baseUrl}}/api/auth/password-reset/forgot
 Content-Type: application/json
 
 {
-  "email": "lareosenglab@gmail.com"
+  "email": "dihardmg@gmail.com"
 }
 
 > {%
@@ -126,16 +126,16 @@ Content-Type: application/json
 }
 
 ### @name verifyResetToken
-GET {{baseUrl}}/api/auth/password-reset/verify-token?token=7ca8e460-4604-484d-908f-c57818c3e381
+GET {{baseUrl}}/api/auth/password-reset/verify-token?token=f930ccd8-5193-46ed-b0bb-556ad5e6909b
 
 ### @name resetPasswordWithValidToken
 POST {{baseUrl}}/api/auth/password-reset/reset
 Content-Type: application/json
 
 {
-  "token": "7ca8e460-4604-484d-908f-c57818c3e381",
-  "newPassword": "NewSecurePassword1234!",
-  "confirmPassword": "NewSecurePassword1234!"
+  "token": "f930ccd8-5193-46ed-b0bb-556ad5e6909b",
+  "newPassword": "NewSecurePassword123456!",
+  "confirmPassword": "NewSecurePassword123456!"
 }
 
 > {%

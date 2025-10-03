@@ -386,9 +386,99 @@ The API provides comprehensive error handling:
 - **Caching strategies** for improved performance
 - **Load balancing** ready architecture
 
-## 🔐 Password Reset API Usage
+## 🔐 Password Reset System
 
-### Request Password Reset
+### Overview
+The GSJ HRIS implements a secure, token-based password reset system with comprehensive security features including rate limiting, email enumeration protection, and password history tracking.
+
+### Password Reset Flow Diagram
+
+```
+┌─────────────────┐    1. Forgot Password    ┌──────────────────┐    2. Generate Token     ┌─────────────────┐
+│   User/Frontend │ ──────────────────────→ │   Password Reset │ ─────────────────────→ │   Database      │
+│   Interface     │                         │   Controller     │                         │   (Tokens)      │
+└─────────────────┘                         └──────────────────┘                         └─────────────────┘
+        │                                           │                                           │
+        │ 3. Email with Reset Link                  │ 4. Store Token                          │
+        │                                           │                                           │
+        ↓                                           ↓                                           ↓
+┌─────────────────┐    5. Click Link          ┌──────────────────┐    6. Validate Token     ┌─────────────────┐
+│   Email Service │ ◄──────────────────────  │   Password Reset │ ◄────────────────────── │   Database      │
+│   (SendGrid)    │                         │   Controller     │                         │   (Validation)  │
+└─────────────────┘                         └──────────────────┘                         └─────────────────┘
+                                                                                                           │
+                                                                                                           │ 7. Check History & Update
+                                                                                                           │
+                                                                                                           ↓
+                                                                                                  ┌─────────────────┐
+                                                                                                  │   Database      │
+                                                                                                  │   (Employees)   │
+                                                                                                  └─────────────────┘
+```
+
+### Detailed Workflow
+
+#### Step 1: Request Password Reset
+**Endpoint:** `POST /api/auth/password-reset/forgot`
+
+1. **Input Validation:**
+   - Validate email format
+   - Check rate limiting (3 requests per hour per email)
+
+2. **Security Measures:**
+   - Email enumeration protection (always returns success)
+   - Rate limiting enforcement
+   - Audit logging for all attempts
+
+3. **Token Generation:**
+   - Generate UUID token
+   - Set expiration (1 hour)
+   - Invalidate existing tokens for the email
+
+4. **Email Delivery:**
+   - Send professional HTML email with reset link
+   - Fallback: Display token in logs for development
+   - Security notifications in email template
+
+#### Step 2: Token Validation
+**Endpoint:** `GET /api/auth/password-reset/verify-token`
+
+1. **Token Checks:**
+   - Token exists and not used
+   - Token not expired
+   - Token format validation
+
+2. **Security:**
+   - Prevent timing attacks
+   - Consistent error messages
+
+#### Step 3: Password Reset
+**Endpoint:** `POST /api/auth/password-reset/reset`
+
+1. **Input Validation:**
+   - Token validation
+   - Password confirmation match
+   - Password strength requirements
+
+2. **Password Requirements:**
+   - Minimum 6 characters
+   - Password history check (last 5 passwords)
+   - No current password reuse
+
+3. **Security Actions:**
+   - Save current password to history
+   - Update employee password with BCrypt encryption
+   - Mark token as used
+   - Invalidate all other tokens for the email
+   - Send confirmation email
+
+4. **Audit:**
+   - Log successful password reset
+   - Track timestamp and IP address
+
+### API Usage Examples
+
+#### Request Password Reset
 ```bash
 curl -X POST http://localhost:8081/api/auth/password-reset/forgot \
   -H "Content-Type: application/json" \
@@ -406,14 +496,14 @@ curl -X POST http://localhost:8081/api/auth/password-reset/forgot \
 }
 ```
 
-### Reset Password
+#### Reset Password with Token
 ```bash
 curl -X POST http://localhost:8081/api/auth/password-reset/reset \
   -H "Content-Type: application/json" \
   -d '{
-    "token": "reset-token-here",
-    "newPassword": "NewSecurePassword123!",
-    "confirmPassword": "NewSecurePassword123!"
+    "token": "a4988afb-48fd-4471-b92b-499c2ea05ac6",
+    "newPassword": "NewSecurePass123",
+    "confirmPassword": "NewSecurePass123"
   }'
 ```
 
@@ -425,9 +515,9 @@ curl -X POST http://localhost:8081/api/auth/password-reset/reset \
 }
 ```
 
-### Verify Reset Token
+#### Verify Reset Token
 ```bash
-curl -X GET "http://localhost:8081/api/auth/password-reset/verify-token?token=reset-token-here"
+curl -X GET "http://localhost:8081/api/auth/password-reset/verify-token?token=a4988afb-48fd-4471-b92b-499c2ea05ac6"
 ```
 
 **Response:**
@@ -438,18 +528,168 @@ curl -X GET "http://localhost:8081/api/auth/password-reset/verify-token?token=re
 }
 ```
 
-### Password Requirements
-- **Minimum length**: 12 characters
-- **Must contain**: Uppercase letter, lowercase letter, number, and special character
-- **History check**: Cannot reuse last 5 passwords
-- **Rate limiting**: 3 requests per hour per email
+### Email Templates
+
+#### Password Reset Email Features:
+- **Professional HTML Design**: Company branded with modern styling
+- **Security Notices**: Clear instructions and warnings
+- **Multiple Action Options**: Button and direct link
+- **Expiration Information**: 1-hour validity notice
+- **Password Requirements**: Security best practices guidance
+- **Responsive Design**: Mobile-friendly layout
+
+#### Email Content Sections:
+1. **Header**: GSJ HRIS branding
+2. **Security Notice**: Warning about link expiration and privacy
+3. **Action Button**: Primary reset password action
+4. **Fallback Link**: Copy-paste option for compatibility
+5. **Password Guidelines**: Security requirements explanation
+6. **Footer**: Company information and automated message notice
 
 ### Security Features
-- **Email enumeration protection**: Generic responses prevent email discovery
-- **Token expiration**: Reset links expire after 1 hour
-- **Single use**: Tokens become invalid after use
-- **Rate limiting**: Prevents brute force attacks
-- **Audit logging**: All reset attempts are logged
+
+#### 🔒 Authentication & Authorization
+- **Rate Limiting**:
+  - 3 reset requests per hour per email
+  - 5 reset confirmations per hour
+- **Token Security**: UUID-based, single-use tokens
+- **Encryption**: BCrypt for password storage
+- **JWT Integration**: Seamless with existing auth system
+
+#### 🛡️ Protection Against Attacks
+- **Email Enumeration**: Generic responses prevent email discovery
+- **Brute Force**: Rate limiting and attempt tracking
+- **Timing Attacks**: Consistent response times
+- **Token Theft**: Short expiration and single-use tokens
+- **Password Reuse**: History tracking prevents reuse
+
+#### 📊 Audit & Monitoring
+- **Comprehensive Logging**: All reset attempts logged
+- **IP Tracking**: Monitor source of requests
+- **Failure Analysis**: Track patterns and potential attacks
+- **Success Notifications**: Email confirmations for successful resets
+
+### Database Schema
+
+#### Password Reset Tokens Table
+```sql
+CREATE TABLE password_reset_tokens (
+    id BIGSERIAL PRIMARY KEY,
+    token VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    expiry_date TIMESTAMP NOT NULL,
+    used BOOLEAN DEFAULT FALSE,
+    used_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+#### Password History Table
+```sql
+CREATE TABLE password_history (
+    id BIGSERIAL PRIMARY KEY,
+    employee_id BIGINT NOT NULL,
+    hashed_password VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (employee_id) REFERENCES employees(id)
+);
+```
+
+### Configuration
+
+#### Application Properties
+```properties
+# Password Reset Configuration
+app.password-reset.token-expiration=3600000 # 1 hour
+app.password-reset.max-attempts=3
+app.password-reset.rate-limit-duration=3600000 # 1 hour
+app.password-check.history-limit=5
+app.frontend.url=http://localhost:3000
+
+# Mail Configuration (SendGrid)
+spring.mail.host=smtp.sendgrid.net
+spring.mail.port=587
+spring.mail.username=${MAIL_USERNAME:apikey}
+spring.mail.password=${MAIL_PASSWORD:your_sendgrid_api_key}
+```
+
+#### Environment Variables
+```bash
+# Development
+export MAIL_PASSWORD=your_sendgrid_dev_api_key
+
+# Production
+export MAIL_PASSWORD=your_sendgrid_prod_api_key
+export DB_USERNAME=prod_user
+export DB_PASSWORD=secure_password
+export JWT_SECRET=production_jwt_secret
+```
+
+### Testing & Development
+
+#### Development Features
+- **Token Display**: Tokens shown in logs for easy testing
+- **Test Endpoints**: Dedicated email testing endpoints
+- **Bypass Email**: Direct token usage for development
+- **Debug Logging**: Detailed logging for troubleshooting
+
+#### Testing Scenarios
+1. **Valid Flow**: Complete password reset workflow
+2. **Invalid Token**: Expired or used token handling
+3. **Rate Limiting**: Exceeding request limits
+4. **Password Validation**: Weak password rejection
+5. **Email Enumeration**: Non-existent email handling
+6. **Password History**: Reuse prevention testing
+
+### Production Deployment
+
+#### Security Considerations
+- **SSL/TLS**: Enforce HTTPS for all endpoints
+- **Environment Variables**: Secure credential management
+- **Monitoring**: Track reset patterns and anomalies
+- **Backup**: Regular database backups with encrypted data
+- **Compliance**: GDPR and data protection considerations
+
+#### Best Practices
+- **Regular Cleanup**: Automated expired token cleanup
+- **Monitoring**: Alert on suspicious reset patterns
+- **User Education**: Clear password security guidelines
+- **Incident Response**: Procedures for security events
+- **Testing**: Regular security testing and validation
+
+### Troubleshooting
+
+#### Common Issues
+1. **Email Not Delivered**: Check SendGrid configuration
+2. **Token Invalid**: Verify token expiration and usage
+3. **Rate Limited**: Wait for rate limit window to reset
+4. **Password Rejected**: Check password requirements and history
+5. **Database Errors**: Verify database connectivity and schema
+
+#### Debug Steps
+1. Check application logs for detailed error messages
+2. Verify email service configuration and credentials
+3. Test database connectivity and token storage
+4. Validate environment variables and configuration
+5. Monitor rate limiting and security logs
+
+### Integration with Frontend
+
+#### Expected Frontend Flow
+1. User enters email in forgot password form
+2. Frontend shows success message (regardless of email existence)
+3. User receives email with reset link
+4. User clicks link and is redirected to reset form
+5. Frontend validates token before showing form
+6. User enters new password and confirmation
+7. Frontend submits reset request
+8. Show success message and redirect to login
+
+#### Error Handling
+- Display user-friendly error messages
+- Handle network errors gracefully
+- Provide clear next steps for each error type
+- Maintain security through consistent error responses
 
 ---
 
