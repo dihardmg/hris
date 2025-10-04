@@ -13,7 +13,7 @@
 # --- AUTHENTICATION TOKENS ---
 ### @token = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJlbXBsb3llZUBocmlzLmNvbSIsImVtcGxveWVlSWQiOjQsImVtcGxveWVlQ29kZSI6IkVNUDAwMSIsImlhdCI6MTc1OTQxODg4NiwiZXhwIjoxNzU5NTA1Mjg2fQ.Tt0sukhGoydJshsxOg4SVrw80tUiH1h2y4mdX8RAL01Ej7bu0M53LRIY0xwskqCL
 
-@token = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJjaXRyYS5uaW5nc2loQGhyaXMuY29tIiwiZW1wbG95ZWVJZCI6NDE0NiwiZW1wbG95ZWVDb2RlIjoiRU1QNjcxMzkiLCJ0aW1lem9uZSI6IkFzaWEvSmFrYXJ0YSIsImlhdCI6MTc1OTQ3ODEwMiwiZXhwIjoxNzU5NTY0NTAyfQ.0EXWCTtYj2aLdIFEg4l08aegtPhaj8v0eqQmyhgwN55xpaGSFiCxWi_e1NeCY9QT
+@token = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJtY3JkaWtAZ21haWwuY29tIiwiZW1wbG95ZWVJZCI6NDE0NiwiZW1wbG95ZWVDb2RlIjoiRU1QNjcxMzkiLCJ0aW1lem9uZSI6IkFzaWEvSmFrYXJ0YSIsImlhdCI6MTc1OTU1OTAzMCwiZXhwIjoxNzU5NjQ1NDMwfQ.yXFWeaasV2VuzVXe_49InhmtmGvzC6rBYh0HDSUTr1mUl7tq5uiEqzQJSjfkQ7g-
 
 @adminToken = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJzdXBlcnZpc29yQGhyaXMuY29tIiwiZW1wbG95ZWVJZCI6MywiZW1wbG95ZWVDb2RlIjoiU1VQMDAxIiwidGltZXpvbmUiOiJBc2lhL0pha2FydGEiLCJpYXQiOjE3NTk0NzcwMDgsImV4cCI6MTc1OTQ3NzMwOH0.DFPl8C_PGiws5qYJbVlCAKa8Ts9WMzrGRjYB9JC0yB8v6K8SucxaKSbEq7sMVsC7
 
@@ -59,7 +59,7 @@ Content-Type: application/json
 
 {
   "email": "mcrdik@gmail.com",
-  "password": "admin123!"
+  "password": "admin1"
 }
 
 
@@ -106,7 +106,7 @@ POST {{baseUrl}}/api/auth/password-reset/forgot
 Content-Type: application/json
 
 {
-  "email": "nonexistent@hris.com"
+  "email": "nonexistenthris.com"
 }
 
 > {%
@@ -126,16 +126,16 @@ Content-Type: application/json
 }
 
 ### @name verifyResetToken
-GET {{baseUrl}}/api/auth/password-reset/verify-token?token=5472728a-3943-47ad-ac04-cf8388e2dae2
+GET {{baseUrl}}/api/auth/password-reset/verify-token?token=24c50e40-a262-40db-8c6e-1418ec9feda3
 
 ### @name resetPasswordWithValidToken
 POST {{baseUrl}}/api/auth/password-reset/reset
 Content-Type: application/json
 
 {
-  "token": "5472728a-3943-47ad-ac04-cf8388e2dae2",
-  "newPassword": "admin123!",
-  "confirmPassword": "admin123!"
+  "token": "24c50e40-a262-40db-8c6e-1418ec9feda3",
+  "newPassword": "admin1",
+  "confirmPassword": "admin1"
 }
 
 > {%

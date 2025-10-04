@@ -118,7 +118,7 @@
 			<scope>runtime</scope>
 			<optional>true</optional>
 		</dependency>
-			<dependency>
+		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
 			<scope>runtime</scope>
@@ -155,6 +155,7 @@
 						<path>
 							<groupId>org.projectlombok</groupId>
 							<artifactId>lombok</artifactId>
+							<version>1.18.40</version>
 						</path>
 					</annotationProcessorPaths>
 				</configuration>
@@ -169,6 +170,8 @@
 							<artifactId>lombok</artifactId>
 						</exclude>
 					</excludes>
+					<fork>true</fork>
+					<addResources>true</addResources>
 				</configuration>
 			</plugin>
 		</plugins>

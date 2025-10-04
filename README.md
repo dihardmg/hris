@@ -3,6 +3,40 @@
 
 A comprehensive **HRIS and Attendance Management System** backend built with **Spring Boot** and **Java 25**, featuring **JWT authentication**, **Face Recognition**, **Geofencing**, and complete **HR management** capabilities.
 
+## 📋 Quick Overview
+
+This system provides a complete HR management solution with the following key features:
+
+- **Employee Management**: Registration, activation, and profile management
+- **Attendance Tracking**: Clock in/out with face recognition and geofencing
+- **Leave Management**: Request and approval workflows for various leave types
+- **Business Travel**: Travel request management with approval workflows
+- **Password Reset**: Secure, token-based password reset with email notifications
+- **Role-Based Access**: Multi-level security (ADMIN, HR, SUPERVISOR, EMPLOYEE)
+- **Database Migrations**: Flyway-based schema versioning
+- **Rate Limiting**: Protection against brute force attacks
+- **Real-time Monitoring**: Health checks and debugging endpoints
+
+## 🚀 Getting Started
+
+1. **Clone**: `git clone <repository-url>`
+2. **Database**: Use Docker Compose or local PostgreSQL
+3. **Run**: `mvn clean spring-boot:run`
+4. **Initialize**: `POST /api/migration/initialize` with admin token
+5. **Login**: Use admin@hris.com / admin123
+
+## 🔧 Technology Stack
+
+| Component | Technology | Version |
+|-----------|------------|---------|
+| **Backend** | Java, Spring Boot | 25, 3.5.6 |
+| **Database** | PostgreSQL | 15+ |
+| **Security** | JWT, Spring Security | Latest |
+| **Caching** | Redis | 7+ |
+| **Email** | SendGrid SMTP | - |
+| **Migration** | Flyway | Latest |
+| **Testing** | JUnit, Mockito | 5+ |
+
 ## 🚀 Features Implemented
 
 ### Authentication & Security
@@ -96,6 +130,14 @@ A comprehensive **HRIS and Attendance Management System** backend built with **S
 - `POST /api/migration/import-employees` - Import employees from CSV
 - `GET /api/migration/csv-template` - Get CSV import template
 
+### System Health & Monitoring
+- `GET /api/test/email?to=<email>` - Test email service configuration
+- `GET /actuator/health` - Application health status (Spring Boot Actuator)
+
+### Development & Debugging
+- `GET /api/auth/debug/hash` - Debug password hashing
+- `POST /api/auth/debug/verify` - Debug password verification
+
 ## 🏗 Project Structure
 
 ```
@@ -116,8 +158,12 @@ src/main/java/hris/hris/
 - **Java 25** or higher
 - **Maven** 3.6+
 - **Docker** and **Docker Compose**
+- **PostgreSQL** (if not using Docker)
+- **Redis** (if not using Docker)
 
 ### Setup Instructions
+
+#### Option 1: Docker Development (Recommended)
 
 1. **Clone the repository**
    ```bash
@@ -125,22 +171,80 @@ src/main/java/hris/hris/
    cd hris
    ```
 
-2. **Start Database and Redis**
+2. **Create Docker Compose file** (if not exists)
+   ```yaml
+   # docker-compose.yml
+   version: '3.8'
+   services:
+     postgres:
+       image: postgres:15-alpine
+       environment:
+         POSTGRES_DB: hris
+         POSTGRES_USER: hris_user
+         POSTGRES_PASSWORD: hris_password
+       ports:
+         - "5432:5432"
+       volumes:
+         - postgres_data:/var/lib/postgresql/data
+
+     redis:
+       image: redis:7-alpine
+       ports:
+         - "6379:6379"
+       command: redis-server --appendonly yes
+       volumes:
+         - redis_data:/data
+
+   volumes:
+     postgres_data:
+     redis_data:
+   ```
+
+3. **Start Services**
    ```bash
    docker-compose up -d
    ```
 
-3. **Run the Application**
+4. **Build and Run Application**
+   ```bash
+   docker build -t hris-app .
+   docker run -p 8081:8081 --env-file .env hris-app
+   ```
+
+#### Option 2: Local Development
+
+1. **Install and start PostgreSQL**
+   ```bash
+   # Create database
+   createdb hris
+   ```
+
+2. **Install and start Redis**
+   ```bash
+   redis-server
+   ```
+
+3. **Set Environment Variables**
+   ```bash
+   export DB_USERNAME=hris_user
+   export DB_PASSWORD=hris_password
+   export JWT_SECRET=your_jwt_secret_key
+   export MAIL_USERNAME=your_email@example.com
+   export MAIL_PASSWORD=your_app_password
+   ```
+
+4. **Run the Application**
    ```bash
    mvn clean spring-boot:run -Dspring-boot.run.profiles=dev
    ```
 
-4. **Initialize Default Data**
-   ```bash
-   curl -X POST http://localhost:8080/api/migration/initialize \
-     -H "Authorization: Bearer <admin-token>" \
-     -H "Content-Type: application/json"
-   ```
+### Initialize Default Data
+After starting the application, initialize default data:
+```bash
+curl -X POST http://localhost:8081/api/migration/initialize \
+  -H "Authorization: Bearer <admin-token>" \
+  -H "Content-Type: application/json"
+```
 
 ### Default Admin User
 - **Email**: admin@hris.com
@@ -159,16 +263,61 @@ The system uses **Flyway** for database version control and migrations. All sche
 - **V5__Create_roles_table.sql** - User roles and permissions
 - **V6__Insert_default_data.sql** - Default users and roles
 - **V7__Add_indexes.sql** - Performance optimization indexes
+- **V8__Fix_password_hashes_and_indexes.sql** - Password hash fixes and comprehensive indexing
+- **V9__Fix_password_hashes_again.sql** - Additional password hash improvements
+- **V10__Fix_password_final.sql** - Final password hash corrections
+- **V11__Final_password_fix.sql** - Final password hash standardization
+- **V12__Fix_face_template_column.sql** - Face template column corrections
+- **V13__Add_approval_notes_column.sql** - Add approval notes feature
+- **V14__Remove_approval_and_rejection_notes_columns.sql** - Clean up approval columns
+- **V15__Remove_approval_date_and_approved_by_id_columns.sql** - Streamline approval workflow
+- **V16__Add_created_by_and_updated_by_columns.sql** - Audit trail improvements
+- **V17__Remove_approved_by_column.sql** - Final approval schema cleanup
+- **V18__Add_UUID_columns.sql** - Add UUID support for entities
 
 ### Core Tables
 - **employees** - Employee information and credentials
 - **attendances** - Attendance records with location and face verification
 - **leave_requests** - Leave request records with approval workflow
 - **business_travel_requests** - Business travel requests
-- **password_reset_tokens** - Password reset token management
-- **password_history** - Password history for reuse prevention
+- **password_reset_tokens** - Password reset token management (Entity: `PasswordResetToken`)
+- **password_history** - Password history for reuse prevention (Entity: `PasswordHistory`)
 - **roles** - User role definitions
 - **user_roles** - Many-to-many user-role mapping
+
+### 🚨 Missing Database Migrations
+The following entities are defined but lack corresponding Flyway migrations:
+
+#### Password Reset Tables (Required)
+```sql
+-- Password Reset Tokens Table
+CREATE TABLE password_reset_tokens (
+    id BIGSERIAL PRIMARY KEY,
+    token VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    expiry_date TIMESTAMP NOT NULL,
+    used BOOLEAN DEFAULT FALSE,
+    used_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Password History Table
+CREATE TABLE password_history (
+    id BIGSERIAL PRIMARY KEY,
+    employee_id BIGINT NOT NULL,
+    hashed_password VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (employee_id) REFERENCES employees(id)
+);
+
+-- Add indexes for password reset tables
+CREATE INDEX idx_password_reset_tokens_email ON password_reset_tokens(email);
+CREATE INDEX idx_password_reset_tokens_token ON password_reset_tokens(token);
+CREATE INDEX idx_password_reset_tokens_expiry ON password_reset_tokens(expiry_date);
+CREATE INDEX idx_password_history_employee_id ON password_history(employee_id);
+```
+
+**Next Migration Version**: `V19__Create_password_reset_tables.sql`
 
 ### Flyway Management APIs
 - `POST /api/flyway/migrate` - Run pending migrations
@@ -194,20 +343,25 @@ The application is configured via `application.properties`:
 
 ```properties
 # Database Configuration
-spring.datasource.url=jdbc:postgresql://localhost:5432/hris
-spring.datasource.username=hris_user
-spring.datasource.password=hris_password
+spring.datasource.url=jdbc:postgresql://localhost:5432/hris?timezone=Asia/Jakarta
+spring.datasource.username=${DB_USERNAME}
+spring.datasource.password=${DB_PASSWORD}
+spring.datasource.driver-class-name=org.postgresql.Driver
 
 # JPA Configuration
 spring.jpa.hibernate.ddl-auto=validate
 spring.jpa.show-sql=true
 spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+spring.jpa.properties.hibernate.format_sql=true
 
 # Flyway Configuration
 spring.flyway.enabled=true
 spring.flyway.baseline-on-migrate=true
+spring.flyway.table=flyway_schema_history
 spring.flyway.locations=classpath:db/migration
 spring.flyway.validate-on-migrate=true
+spring.flyway.out-of-order=false
+spring.flyway.ignore-missing-migrations=false
 
 # JWT Configuration
 jwt.secret=hris_jwt_secret_key_2024_very_long_secure_key_for_jwt_tokens
@@ -220,17 +374,42 @@ app.password-reset.rate-limit-duration=3600000 # 1 hour
 app.password-check.history-limit=5
 app.frontend.url=http://localhost:3000
 
-# Mail Configuration
-spring.mail.host=smtp.gmail.com
+# Mail Configuration (SendGrid)
+spring.mail.host=smtp.sendgrid.net
 spring.mail.port=587
-spring.mail.username=smtp.dihardmg@gmail.com
-spring.mail.password=Terserah123;
+spring.mail.username=${MAIL_USERNAME}
+spring.mail.password=${MAIL_PASSWORD}
 spring.mail.properties.mail.smtp.auth=true
 spring.mail.properties.mail.smtp.starttls.enable=true
+spring.mail.properties.mail.smtp.ssl.trust=smtp.sendgrid.net
+spring.mail.properties.mail.smtp.connectiontimeout=10000
+spring.mail.properties.mail.smtp.timeout=10000
 
 # Rate Limiting
 rate.limit.attempts=5
 rate.limit.window=300000 # 5 minutes
+
+# Redis Configuration (for rate limiting and caching)
+spring.redis.host=localhost
+spring.redis.port=6379
+
+# Logging Configuration
+logging.level.hris=DEBUG
+logging.level.org.springframework.security=DEBUG
+
+# File Upload Configuration
+spring.servlet.multipart.max-file-size=10MB
+spring.servlet.multipart.max-request-size=10MB
+
+# Server Configuration
+server.port=8081
+
+# Timezone Configuration
+spring.jpa.properties.hibernate.jdbc.time_zone=Asia/Jakarta
+
+# Application Information
+app.name=GSJ HRIS
+app.version=1.0.0
 
 # Resilience4j Configuration (Password Reset Rate Limiting)
 resilience4j.ratelimiter.instances.password-reset-request.limit-for-period=3
@@ -240,6 +419,13 @@ resilience4j.ratelimiter.instances.password-reset-request.timeout-duration=5s
 resilience4j.ratelimiter.instances.password-reset-confirm.limit-for-period=5
 resilience4j.ratelimiter.instances.password-reset-confirm.limit-refresh-period=1h
 resilience4j.ratelimiter.instances.password-reset-confirm.timeout-duration=5s
+
+# Resilience4j Retry Configuration
+resilience4j.retry.instances.password-reset-request.max-attempts=3
+resilience4j.retry.instances.password-reset-request.wait-duration=1s
+
+resilience4j.retry.instances.password-reset-confirm.max-attempts=3
+resilience4j.retry.instances.password-reset-confirm.wait-duration=1s
 
 # Face Recognition
 face.recognition.threshold=0.7
@@ -297,40 +483,6 @@ geofence.radius=100.0
 - **Pessimistic locking** only when necessary
 - **Efficient queries** with proper indexing
 
-## 🔄 Data Migration
-
-### Flyway Database Migrations
-The system uses **Flyway** for schema versioning and management:
-
-#### Migration Process
-1. **Automatic Migration**: Runs automatically on application startup
-2. **Manual Migration**: Use `POST /api/flyway/migrate` to run manually
-3. **Validation**: Ensure migrations are consistent with `POST /api/flyway/validate`
-
-#### Adding New Migrations
-1. Create new SQL file in `src/main/resources/db/migration/`
-2. Follow naming convention: `V{number}__Description.sql`
-3. Use proper versioning (V8, V9, etc.)
-4. Include both UP and DOWN operations if needed
-
-#### Migration Best Practices
-- ✅ **Always test migrations** on development environment first
-- ✅ **Use descriptive migration names** for clarity
-- ✅ **Make migrations idempotent** (can run multiple times)
-- ✅ **Include proper constraints** and indexes
-- ✅ **Use transactions** for data consistency
-- ✅ **Document breaking changes** in migration comments
-
-### CSV Import Format
-```csv
-FirstName,LastName,Email,PhoneNumber,DepartmentId,PositionId,SupervisorId,HireDate,AnnualLeaveBalance,SickLeaveBalance
-John,Doe,john.doe@company.com,+1234567890,1,1,,2024-01-15,12,10
-```
-
-### Migration Steps
-1. **Get CSV template**: `GET /api/migration/csv-template`
-2. **Prepare CSV file** with employee data
-3. **Import data**: `POST /api/migration/import-employees`
 
 ## 🚨 Error Handling
 
@@ -595,35 +747,6 @@ CREATE TABLE password_history (
 );
 ```
 
-### Configuration
-
-#### Application Properties
-```properties
-# Password Reset Configuration
-app.password-reset.token-expiration=3600000 # 1 hour
-app.password-reset.max-attempts=3
-app.password-reset.rate-limit-duration=3600000 # 1 hour
-app.password-check.history-limit=5
-app.frontend.url=http://localhost:3000
-
-# Mail Configuration (SendGrid)
-spring.mail.host=smtp.sendgrid.net
-spring.mail.port=587
-spring.mail.username=${MAIL_USERNAME:apikey}
-spring.mail.password=${MAIL_PASSWORD:your_sendgrid_api_key}
-```
-
-#### Environment Variables
-```bash
-# Development
-export MAIL_PASSWORD=your_sendgrid_dev_api_key
-
-# Production
-export MAIL_PASSWORD=your_sendgrid_prod_api_key
-export DB_USERNAME=prod_user
-export DB_PASSWORD=secure_password
-export JWT_SECRET=production_jwt_secret
-```
 
 ### Testing & Development
 

@@ -35,4 +35,11 @@ public class ApiResponse<T> {
         response.setMessage(message);
         return response;
     }
+
+    public static ApiResponse<RateLimitResponse> error(RateLimitResponse data) {
+        ApiResponse<RateLimitResponse> response = new ApiResponse<>();
+        response.setData(data);
+        response.setMessage(data.getMessage());
+        return response;
+    }
 }

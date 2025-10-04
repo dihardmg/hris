@@ -1,8 +1,11 @@
 package hris.hris.exception;
 
+import hris.hris.dto.ApiResponse;
+import hris.hris.dto.RateLimitResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
@@ -79,6 +82,59 @@ public class GlobalExceptionHandler {
         response.put("path", request.getDescription(false).replace("uri=", ""));
 
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+    }
+
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ResponseEntity<ApiResponse<?>> handleRateLimitExceededException(
+            RateLimitExceededException ex, WebRequest request) {
+
+        log.warn("Rate limit exceeded for email: {}, IP: {}, Message: {}",
+                ex.getEmail(), ex.getClientIP(), ex.getMessage());
+
+        RateLimitResponse rateLimitResponse = ex.getRateLimitResponse();
+
+        // Create response headers following RESTful best practices
+        HttpHeaders headers = new HttpHeaders();
+
+        if (rateLimitResponse != null) {
+            // Standard HTTP headers for rate limiting
+            if (rateLimitResponse.getRetryAfterSeconds() != null) {
+                headers.add("Retry-After", rateLimitResponse.getRetryAfterSeconds().toString());
+            }
+
+            if (rateLimitResponse.getMaxAttempts() != null) {
+                headers.add("X-RateLimit-Limit", rateLimitResponse.getMaxAttempts().toString());
+            }
+
+            if (rateLimitResponse.getRemainingAttempts() != null) {
+                headers.add("X-RateLimit-Remaining", rateLimitResponse.getRemainingAttempts().toString());
+            }
+
+            if (rateLimitResponse.getCurrentAttempts() != null) {
+                headers.add("X-RateLimit-Used", rateLimitResponse.getCurrentAttempts().toString());
+            }
+
+            if (rateLimitResponse.getResetTimeUnix() != null) {
+                headers.add("X-RateLimit-Reset", rateLimitResponse.getResetTimeUnix().toString());
+            }
+
+            // Custom headers for additional context
+            headers.add("X-RateLimit-Resource", rateLimitResponse.getResourceType());
+            headers.add("X-RateLimit-Window", rateLimitResponse.getWindowType());
+            headers.add("X-RateLimit-Error-Code", rateLimitResponse.getErrorCode());
+
+            if (rateLimitResponse.getRequestId() != null) {
+                headers.add("X-Request-ID", rateLimitResponse.getRequestId());
+            }
+        }
+
+        // Return enhanced rate limit response
+        ApiResponse<RateLimitResponse> response = ApiResponse.error(rateLimitResponse);
+
+        return ResponseEntity
+                .status(HttpStatus.TOO_MANY_REQUESTS)
+                .headers(headers)
+                .body(response);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

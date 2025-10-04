@@ -81,6 +81,30 @@ public class RateLimitingService {
         }
     }
 
+    public void resetRateLimit(String email) {
+        String key = getRateLimitKey(email);
+        try {
+            redisTemplate.delete(key);
+            log.info("Rate limit manually reset for user {}", email);
+        } catch (Exception e) {
+            log.error("Error manually resetting rate limit for user {}: {}", email, e.getMessage());
+        }
+    }
+
+    public boolean isUserRateLimited(String email) {
+        return isRateLimited(email);
+    }
+
+    public long getRateLimitTTL(String email) {
+        String key = getRateLimitKey(email);
+        try {
+            return redisTemplate.getExpire(key, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            log.error("Error getting TTL for rate limit key {}: {}", key, e.getMessage());
+            return -1;
+        }
+    }
+
     private String getRateLimitKey(String email) {
         return RATE_LIMIT_PREFIX + email;
     }
