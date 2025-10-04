@@ -8,6 +8,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -31,6 +32,18 @@ public class Attendance {
         if (uuid == null) {
             uuid = UUID.randomUUID();
         }
+        setDateFromTime();
+    }
+
+    @PreUpdate
+    public void setDateFromTime() {
+        if (date == null) {
+            if (clockInTime != null) {
+                date = clockInTime.toLocalDate();
+            } else if (clockOutTime != null) {
+                date = clockOutTime.toLocalDate();
+            }
+        }
     }
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -39,6 +52,9 @@ public class Attendance {
 
     @Column(name = "employee_id", insertable = false, updatable = false)
     private Long employeeId;
+
+    @Column(name = "date", nullable = false)
+    private LocalDate date;
 
     @Column(name = "clock_in_time")
     private LocalDateTime clockInTime;

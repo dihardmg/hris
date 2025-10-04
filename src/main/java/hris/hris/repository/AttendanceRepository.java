@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import jakarta.persistence.LockModeType;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -48,4 +49,23 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
 
     // UUID-based queries for API security
     Optional<Attendance> findByUuid(UUID uuid);
+
+    // Date-based queries for efficient reporting and filtering
+    Optional<Attendance> findByEmployeeIdAndDate(Long employeeId, LocalDate date);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT a FROM Attendance a WHERE a.employee.id = :employeeId AND a.date = :date")
+    Optional<Attendance> findByEmployeeIdAndDateWithLock(@Param("employeeId") Long employeeId,
+                                                        @Param("date") LocalDate date);
+
+    List<Attendance> findByEmployeeIdAndDateBetweenOrderByDateDesc(Long employeeId, LocalDate startDate, LocalDate endDate);
+
+    List<Attendance> findByDateBetween(LocalDate startDate, LocalDate endDate);
+
+    List<Attendance> findByDateOrderByDateDesc(LocalDate date);
+
+    // Count queries for reporting
+    long countByEmployeeIdAndDateBetween(Long employeeId, LocalDate startDate, LocalDate endDate);
+
+    long countByDateBetween(LocalDate startDate, LocalDate endDate);
 }

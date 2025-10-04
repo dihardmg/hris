@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
@@ -48,11 +49,10 @@ public class AttendanceService {
             .orElseThrow(() -> new RuntimeException("Employee not found"));
 
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime startOfDay = now.toLocalDate().atStartOfDay();
-        LocalDateTime endOfDay = now.toLocalDate().atTime(LocalTime.MAX);
+        LocalDate today = now.toLocalDate();
 
         Optional<Attendance> existingAttendance = attendanceRepository
-            .findTodayAttendanceWithLock(employeeId, startOfDay, endOfDay);
+            .findByEmployeeIdAndDateWithLock(employeeId, today);
 
         if (existingAttendance.isPresent()) {
             Attendance attendance = existingAttendance.get();
@@ -79,6 +79,7 @@ public class AttendanceService {
 
         Attendance attendance = new Attendance();
         attendance.setEmployee(employee);
+        attendance.setDate(today);
         attendance.setClockInTime(now);
         attendance.setLatitude(request.getLatitude() != null ? BigDecimal.valueOf(request.getLatitude()) : null);
         attendance.setLongitude(request.getLongitude() != null ? BigDecimal.valueOf(request.getLongitude()) : null);
@@ -96,11 +97,10 @@ public class AttendanceService {
     @Transactional
     public AttendanceDto clockOut(Long employeeId) {
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime startOfDay = now.toLocalDate().atStartOfDay();
-        LocalDateTime endOfDay = now.toLocalDate().atTime(LocalTime.MAX);
+        LocalDate today = now.toLocalDate();
 
         Optional<Attendance> attendanceOpt = attendanceRepository
-            .findTodayAttendanceWithLock(employeeId, startOfDay, endOfDay);
+            .findByEmployeeIdAndDateWithLock(employeeId, today);
 
         if (attendanceOpt.isEmpty()) {
             throw new RuntimeException("No active clock-in record found for today");
@@ -182,6 +182,7 @@ public class AttendanceService {
         AttendanceDto dto = new AttendanceDto();
         dto.setUuid(attendance.getUuid());
         dto.setEmployeeName(attendance.getEmployee().getFirstName() + " " + attendance.getEmployee().getLastName());
+        dto.setDate(attendance.getDate());
         dto.setClockInTime(attendance.getClockInTime());
         dto.setClockOutTime(attendance.getClockOutTime());
         dto.setLatitude(attendance.getLatitude());
