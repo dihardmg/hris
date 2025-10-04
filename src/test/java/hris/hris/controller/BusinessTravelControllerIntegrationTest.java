@@ -5,7 +5,6 @@ import hris.hris.dto.BusinessTravelRequestDto;
 import hris.hris.dto.LoginRequest;
 import hris.hris.dto.LoginResponse;
 import hris.hris.model.Employee;
-import hris.hris.model.BusinessTravelRequest;
 import hris.hris.repository.EmployeeRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,11 +19,8 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -103,365 +99,214 @@ class BusinessTravelControllerIntegrationTest {
     @Test
     void createBusinessTravelRequest_WithValidData_ShouldReturnSuccess() throws Exception {
         BusinessTravelRequestDto request = new BusinessTravelRequestDto();
-        request.setDestination("Jakarta, Indonesia");
+        request.setCity("Jakarta, Indonesia");
         request.setStartDate(LocalDate.now().plusDays(7));
         request.setEndDate(LocalDate.now().plusDays(10));
-        request.setTravelPurpose("Client meeting and project discussion");
-        request.setTransportationType(BusinessTravelRequest.TransportationType.FLIGHT);
-        request.setAccommodationRequired(true);
-        request.setEstimatedCost(new BigDecimal("5000.00"));
+        request.setReason("Client meeting and project discussion");
 
         mockMvc.perform(post("/api/business-travel/request")
                 .header("Authorization", employeeAuthToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().is(401));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Business travel request submitted successfully"))
+                .andExpect(jsonPath("$.travelRequest.city").value("Jakarta, Indonesia"))
+                .andExpect(jsonPath("$.travelRequest.totalDays").value(4));
     }
 
     @Test
     void createBusinessTravelRequest_WithInvalidDateRange_ShouldReturnBadRequest() throws Exception {
         BusinessTravelRequestDto request = new BusinessTravelRequestDto();
-        request.setDestination("Jakarta, Indonesia");
+        request.setCity("Jakarta, Indonesia");
         request.setStartDate(LocalDate.now().plusDays(10));
         request.setEndDate(LocalDate.now().plusDays(7));
-        request.setTravelPurpose("Invalid date range");
-        request.setTransportationType(BusinessTravelRequest.TransportationType.FLIGHT);
-        request.setEstimatedCost(new BigDecimal("5000.00"));
+        request.setReason("Invalid date range");
 
         mockMvc.perform(post("/api/business-travel/request")
                 .header("Authorization", employeeAuthToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().is(401));
+                .andExpect(status().isBadRequest());
     }
 
     @Test
     void createBusinessTravelRequest_WithPastDate_ShouldReturnBadRequest() throws Exception {
         BusinessTravelRequestDto request = new BusinessTravelRequestDto();
-        request.setDestination("Jakarta, Indonesia");
+        request.setCity("Jakarta, Indonesia");
         request.setStartDate(LocalDate.now().minusDays(1));
         request.setEndDate(LocalDate.now().plusDays(1));
-        request.setTravelPurpose("Past date request");
-        request.setTransportationType(BusinessTravelRequest.TransportationType.FLIGHT);
-        request.setEstimatedCost(new BigDecimal("5000.00"));
+        request.setReason("Past date request");
 
         mockMvc.perform(post("/api/business-travel/request")
                 .header("Authorization", employeeAuthToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().is(400));
+                .andExpect(status().isBadRequest());
     }
 
     @Test
-    void createBusinessTravelRequest_WithMissingDestination_ShouldReturnBadRequest() throws Exception {
+    void createBusinessTravelRequest_WithMissingCity_ShouldReturnBadRequest() throws Exception {
         BusinessTravelRequestDto request = new BusinessTravelRequestDto();
         request.setStartDate(LocalDate.now().plusDays(7));
         request.setEndDate(LocalDate.now().plusDays(10));
-        request.setTravelPurpose("Missing destination");
-        request.setTransportationType(BusinessTravelRequest.TransportationType.FLIGHT);
-        request.setEstimatedCost(new BigDecimal("5000.00"));
+        request.setReason("Missing city");
 
         mockMvc.perform(post("/api/business-travel/request")
                 .header("Authorization", employeeAuthToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().is(400));
+                .andExpect(status().isBadRequest());
     }
 
     @Test
-    void createBusinessTravelRequest_WithNegativeCost_ShouldReturnBadRequest() throws Exception {
+    void createBusinessTravelRequest_WithInvalidToken_ShouldReturnUnauthorized() throws Exception {
         BusinessTravelRequestDto request = new BusinessTravelRequestDto();
-        request.setDestination("Jakarta, Indonesia");
+        request.setCity("Jakarta, Indonesia");
         request.setStartDate(LocalDate.now().plusDays(7));
         request.setEndDate(LocalDate.now().plusDays(10));
-        request.setTravelPurpose("Negative cost");
-        request.setTransportationType(BusinessTravelRequest.TransportationType.FLIGHT);
-        request.setEstimatedCost(new BigDecimal("-1000.00"));
-
-        mockMvc.perform(post("/api/business-travel/request")
-                .header("Authorization", employeeAuthToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().is(401));
-    }
-
-    @Test
-    void createBusinessTravelRequest_WithInvalidToken_ShouldReturnBadRequest() throws Exception {
-        BusinessTravelRequestDto request = new BusinessTravelRequestDto();
-        request.setDestination("Jakarta, Indonesia");
-        request.setStartDate(LocalDate.now().plusDays(7));
-        request.setEndDate(LocalDate.now().plusDays(10));
-        request.setTravelPurpose("Invalid token request");
-        request.setTransportationType(BusinessTravelRequest.TransportationType.FLIGHT);
-        request.setEstimatedCost(new BigDecimal("5000.00"));
+        request.setReason("Invalid token request");
 
         mockMvc.perform(post("/api/business-travel/request")
                 .header("Authorization", "Bearer invalid.token")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().is(401));
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void createBusinessTravelRequest_WithMissingToken_ShouldReturnInternalServerError() throws Exception {
+    void createBusinessTravelRequest_WithMissingToken_ShouldReturnUnauthorized() throws Exception {
         BusinessTravelRequestDto request = new BusinessTravelRequestDto();
-        request.setDestination("Jakarta, Indonesia");
+        request.setCity("Jakarta, Indonesia");
         request.setStartDate(LocalDate.now().plusDays(7));
         request.setEndDate(LocalDate.now().plusDays(10));
-        request.setTravelPurpose("No token request");
-        request.setTransportationType(BusinessTravelRequest.TransportationType.FLIGHT);
-        request.setEstimatedCost(new BigDecimal("5000.00"));
+        request.setReason("No token request");
 
         mockMvc.perform(post("/api/business-travel/request")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().is(500));
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void getMyBusinessTravelRequests_WithValidToken_ShouldReturnRequests() throws Exception {
+    void getMyBusinessTravelRequests_WithValidToken_ShouldReturnPaginatedRequests() throws Exception {
+        // First create a travel request
         BusinessTravelRequestDto request = new BusinessTravelRequestDto();
-        request.setDestination("Jakarta, Indonesia");
+        request.setCity("Jakarta, Indonesia");
         request.setStartDate(LocalDate.now().plusDays(7));
         request.setEndDate(LocalDate.now().plusDays(10));
-        request.setTravelPurpose("Test travel");
-        request.setTransportationType(BusinessTravelRequest.TransportationType.FLIGHT);
-        request.setEstimatedCost(new BigDecimal("5000.00"));
+        request.setReason("Test travel");
 
         mockMvc.perform(post("/api/business-travel/request")
                 .header("Authorization", employeeAuthToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().is(401));
+                .andExpect(status().isOk());
 
+        // Then get paginated requests
         mockMvc.perform(get("/api/business-travel/my-requests")
                 .header("Authorization", employeeAuthToken))
-                .andExpect(status().is(401));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.page.size").value(10))
+                .andExpect(jsonPath("$.page.current").value(1));
     }
 
     @Test
-    void getMyBusinessTravelRequests_WithNoRequests_ShouldReturnEmptyArray() throws Exception {
+    void getMyBusinessTravelRequests_WithPagination_ShouldReturnPaginatedResults() throws Exception {
         mockMvc.perform(get("/api/business-travel/my-requests")
+                .param("page", "0")
+                .param("size", "5")
                 .header("Authorization", employeeAuthToken))
-                .andExpect(status().is(401));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page.size").value(5))
+                .andExpect(jsonPath("$.page.current").value(1));
     }
 
     @Test
-    void getCurrentTravel_WithActiveTravel_ShouldReturnCurrentTravel() throws Exception {
-        BusinessTravelRequestDto request = new BusinessTravelRequestDto();
-        request.setDestination("Jakarta, Indonesia");
-        request.setStartDate(LocalDate.now().minusDays(1));
-        request.setEndDate(LocalDate.now().plusDays(1));
-        request.setTravelPurpose("Current travel");
-        request.setTransportationType(BusinessTravelRequest.TransportationType.FLIGHT);
-        request.setEstimatedCost(new BigDecimal("5000.00"));
-
-        mockMvc.perform(post("/api/business-travel/request")
+    void getBusinessTravelRequestByUuid_WithValidUuid_ShouldReturnRequest() throws Exception {
+        // First create a travel request
+        var result = mockMvc.perform(post("/api/business-travel/request")
                 .header("Authorization", employeeAuthToken)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().is(400));
+                .content(objectMapper.writeValueAsString(new BusinessTravelRequestDto() {{
+                    setCity("Jakarta, Indonesia");
+                    setStartDate(LocalDate.now().plusDays(7));
+                    setEndDate(LocalDate.now().plusDays(10));
+                    setReason("Test travel by UUID");
+                }})))
+                .andExpect(status().isOk())
+                .andReturn();
 
-        mockMvc.perform(get("/api/business-travel/current")
+        String responseContent = result.getResponse().getContentAsString();
+        com.fasterxml.jackson.databind.JsonNode jsonNode = objectMapper.readTree(responseContent);
+        String uuid = jsonNode.get("travelRequest").get("uuid").asText();
+
+        // Then get by UUID
+        mockMvc.perform(get("/api/business-travel/request/" + uuid)
                 .header("Authorization", employeeAuthToken))
-                .andExpect(status().is(401));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.city").value("Jakarta, Indonesia"))
+                .andExpect(jsonPath("$.uuid").value(uuid));
+    }
+
+    @Test
+    void getBusinessTravelRequestByUuid_WithInvalidUuid_ShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(get("/api/business-travel/request/" + UUID.randomUUID().toString())
+                .header("Authorization", employeeAuthToken))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
     void getCurrentTravel_WithNoCurrentTravel_ShouldReturnMessage() throws Exception {
         mockMvc.perform(get("/api/business-travel/current")
                 .header("Authorization", employeeAuthToken))
-                .andExpect(status().is(401));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("No current business travel found"));
     }
 
     @Test
     void getPendingBusinessTravelRequests_WithSupervisorRole_ShouldReturnPendingRequests() throws Exception {
-        BusinessTravelRequestDto request = new BusinessTravelRequestDto();
-        request.setDestination("Jakarta, Indonesia");
-        request.setStartDate(LocalDate.now().plusDays(7));
-        request.setEndDate(LocalDate.now().plusDays(10));
-        request.setTravelPurpose("Pending travel");
-        request.setTransportationType(BusinessTravelRequest.TransportationType.FLIGHT);
-        request.setEstimatedCost(new BigDecimal("5000.00"));
-
-        mockMvc.perform(post("/api/business-travel/request")
-                .header("Authorization", employeeAuthToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().is(401));
-
         mockMvc.perform(get("/api/business-travel/supervisor/pending")
                 .header("Authorization", supervisorAuthToken))
-                .andExpect(status().is(401));
+                .andExpect(status().isOk());
     }
 
     @Test
-    void approveBusinessTravelRequest_WithValidApproval_ShouldReturnSuccess() throws Exception {
+    void getPendingBusinessTravelRequests_WithEmployeeRole_ShouldReturnForbidden() throws Exception {
+        mockMvc.perform(get("/api/business-travel/supervisor/pending")
+                .header("Authorization", employeeAuthToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void createBusinessTravelRequest_OneDayTrip_ShouldCalculateOneDay() throws Exception {
         BusinessTravelRequestDto request = new BusinessTravelRequestDto();
-        request.setDestination("Jakarta, Indonesia");
+        request.setCity("Surabaya, Indonesia");
         request.setStartDate(LocalDate.now().plusDays(7));
-        request.setEndDate(LocalDate.now().plusDays(10));
-        request.setTravelPurpose("Travel to approve");
-        request.setTransportationType(BusinessTravelRequest.TransportationType.FLIGHT);
-        request.setEstimatedCost(new BigDecimal("5000.00"));
-
-        // Simplified test due to authentication issues
-        Map<String, String> requestBody = new HashMap<>();
-        requestBody.put("notes", "Approved by supervisor");
-
-        mockMvc.perform(post("/api/business-travel/supervisor/approve/1")
-                .header("Authorization", supervisorAuthToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(requestBody)))
-                .andExpect(status().is(401));
-    }
-
-    @Test
-    void approveBusinessTravelRequest_WithNonExistentRequest_ShouldReturnBadRequest() throws Exception {
-        Map<String, String> requestBody = new HashMap<>();
-        requestBody.put("notes", "Approve non-existent request");
-
-        mockMvc.perform(post("/api/business-travel/supervisor/approve/99999")
-                .header("Authorization", supervisorAuthToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(requestBody)))
-                .andExpect(status().is(401))
-                .andExpect(jsonPath("$.message").exists());
-    }
-
-    @Test
-    void rejectBusinessTravelRequest_WithValidRejection_ShouldReturnSuccess() throws Exception {
-        // Simplified test due to authentication issues
-        Integer requestId = 1; // Use dummy ID
-
-        Map<String, String> requestBody = new HashMap<>();
-        requestBody.put("rejectionReason", "Budget constraints");
-
-        mockMvc.perform(post("/api/business-travel/supervisor/reject/" + requestId)
-                .header("Authorization", supervisorAuthToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(requestBody)))
-                .andExpect(status().is(401));
-    }
-
-    @Test
-    void rejectBusinessTravelRequest_WithMissingRejectionReason_ShouldReturnBadRequest() throws Exception {
-        // Simplified test due to authentication issues
-        Integer requestId = 1; // Use dummy ID
-
-        Map<String, String> requestBody = new HashMap<>();
-
-        mockMvc.perform(post("/api/business-travel/supervisor/reject/" + requestId)
-                .header("Authorization", supervisorAuthToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(requestBody)))
-                .andExpect(status().is(401));
-    }
-
-    @Test
-    void rejectBusinessTravelRequest_WithEmptyRejectionReason_ShouldReturnBadRequest() throws Exception {
-        // Simplified test due to authentication issues
-        Integer requestId = 1; // Use dummy ID
-
-        Map<String, String> requestBody = new HashMap<>();
-        requestBody.put("rejectionReason", "");
-
-        mockMvc.perform(post("/api/business-travel/supervisor/reject/" + requestId)
-                .header("Authorization", supervisorAuthToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(requestBody)))
-                .andExpect(status().is(401));
-    }
-
-    @Test
-    void createBusinessTravelRequest_WithDifferentTransportationTypes_ShouldReturnSuccess() throws Exception {
-        BusinessTravelRequest.TransportationType[] transportTypes = {
-            BusinessTravelRequest.TransportationType.FLIGHT,
-            BusinessTravelRequest.TransportationType.TRAIN,
-            BusinessTravelRequest.TransportationType.BUS,
-            BusinessTravelRequest.TransportationType.CAR,
-            BusinessTravelRequest.TransportationType.OTHER
-        };
-
-        for (BusinessTravelRequest.TransportationType transportType : transportTypes) {
-            BusinessTravelRequestDto request = new BusinessTravelRequestDto();
-            request.setDestination("Test Destination");
-            request.setStartDate(LocalDate.now().plusDays(7));
-            request.setEndDate(LocalDate.now().plusDays(10));
-            request.setTravelPurpose("Test with " + transportType);
-            request.setTransportationType(transportType);
-            request.setEstimatedCost(new BigDecimal("5000.00"));
-
-            mockMvc.perform(post("/api/business-travel/request")
-                    .header("Authorization", employeeAuthToken)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().is(401));
-        }
-    }
-
-    @Test
-    void createBusinessTravelRequest_WithDifferentAccommodationTypes_ShouldReturnSuccess() throws Exception {
-        Boolean[] accommodationTypes = {true, false};
-
-        for (Boolean accommodationType : accommodationTypes) {
-            BusinessTravelRequestDto request = new BusinessTravelRequestDto();
-            request.setDestination("Test Destination");
-            request.setStartDate(LocalDate.now().plusDays(7));
-            request.setEndDate(LocalDate.now().plusDays(10));
-            request.setTravelPurpose("Test with accommodation: " + accommodationType);
-            request.setTransportationType(BusinessTravelRequest.TransportationType.FLIGHT);
-            request.setAccommodationRequired(accommodationType);
-            request.setEstimatedCost(new BigDecimal("5000.00"));
-
-            mockMvc.perform(post("/api/business-travel/request")
-                    .header("Authorization", employeeAuthToken)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().is(401));
-        }
-    }
-
-    @Test
-    void createBusinessTravelRequest_WithVeryHighCost_ShouldReturnSuccess() throws Exception {
-        BusinessTravelRequestDto request = new BusinessTravelRequestDto();
-        request.setDestination("International Destination");
-        request.setStartDate(LocalDate.now().plusDays(14));
-        request.setEndDate(LocalDate.now().plusDays(30));
-        request.setTravelPurpose("International business trip");
-        request.setTransportationType(BusinessTravelRequest.TransportationType.FLIGHT);
-        request.setEstimatedCost(new BigDecimal("50000.00"));
-        
-        mockMvc.perform(post("/api/business-travel/request")
-                .header("Authorization", employeeAuthToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().is(401));
-    }
-
-    @Test
-    void createBusinessTravelRequest_WithInvalidJson_ShouldReturnBadRequest() throws Exception {
-        mockMvc.perform(post("/api/business-travel/request")
-                .header("Authorization", employeeAuthToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{invalid json}"))
-                .andExpect(status().is(400));
-    }
-
-    @Test
-    void createBusinessTravelRequest_WithOneDayTrip_ShouldReturnSuccess() throws Exception {
-        BusinessTravelRequestDto request = new BusinessTravelRequestDto();
-        request.setDestination("Local City");
-        request.setStartDate(LocalDate.now().plusDays(7));
-        request.setEndDate(LocalDate.now().plusDays(7));
-        request.setTravelPurpose("One day business meeting");
-        request.setTransportationType(BusinessTravelRequest.TransportationType.CAR);
-        request.setEstimatedCost(new BigDecimal("500.00"));
+        request.setEndDate(LocalDate.now().plusDays(7)); // Same day
+        request.setReason("One day business meeting");
 
         mockMvc.perform(post("/api/business-travel/request")
                 .header("Authorization", employeeAuthToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().is(401));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.travelRequest.totalDays").value(1));
+    }
+
+    @Test
+    void createBusinessTravelRequest_MultiDayTrip_ShouldCalculateCorrectDays() throws Exception {
+        BusinessTravelRequestDto request = new BusinessTravelRequestDto();
+        request.setCity("Singapore");
+        request.setStartDate(LocalDate.now().plusDays(7));
+        request.setEndDate(LocalDate.now().plusDays(10)); // 4 days total
+        request.setReason("International conference");
+
+        mockMvc.perform(post("/api/business-travel/request")
+                .header("Authorization", employeeAuthToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.travelRequest.totalDays").value(4));
     }
 }

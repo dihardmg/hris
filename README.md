@@ -110,57 +110,903 @@ For secure environment configuration, see **[Environment Setup Guide](docs/ENVIR
 | **Containerization** | Docker & Docker Compose |
 | **Build Tool** | Maven |
 
-## 📋 API Endpoints
+## 📋 API Endpoints Documentation
 
-### Authentication
-- `POST /api/auth/login` - Employee login
-- `POST /api/auth/validate` - Token validation
-- `GET /api/auth/me` - Get current user info
+### Base URL
+```
+Development: http://localhost:8081
+Production: https://your-domain.com
+```
 
-### Password Reset
-- `POST /api/auth/password-reset/forgot` - Request password reset link
-- `POST /api/auth/password-reset/reset` - Reset password with token
-- `GET /api/auth/password-reset/verify-token` - Verify reset token validity
+### Authentication Headers
+All API endpoints (except login and password reset) require JWT authentication:
+```http
+Authorization: Bearer <jwt-token>
+Content-Type: application/json
+```
 
-### Attendance
-- `POST /api/attendance/clock-in` - Clock in with face verification
-- `POST /api/attendance/clock-out` - Clock out
-- `GET /api/attendance/today` - Get today's attendance
-- `GET /api/attendance/status` - Get attendance status
-- `GET /api/attendance/history` - Get attendance history
+### Standard Response Format
+```json
+{
+  "success": true,
+  "message": "Operation completed successfully",
+  "data": { ... },
+  "timestamp": "2025-10-04T22:00:00.000Z"
+}
+```
 
-### Leave Management
-- `POST /api/leave/request` - Submit leave request
-- `GET /api/leave/my-requests` - Get my leave requests
-- `GET /api/leave/current` - Get current leave
-- `POST /api/leave/supervisor/approve/{id}` - Approve leave request
-- `POST /api/leave/supervisor/reject/{id}` - Reject leave request
+### Error Response Format
+```json
+{
+  "success": false,
+  "message": "Error description",
+  "error": "ERROR_TYPE",
+  "timestamp": "2025-10-04T22:00:00.000Z"
+}
+```
 
-### Business Travel
-- `POST /api/business-travel/request` - Submit travel request
-- `GET /api/business-travel/my-requests` - Get my travel requests
-- `POST /api/business-travel/supervisor/approve/{id}` - Approve travel request
-- `POST /api/business-travel/supervisor/reject/{id}` - Reject travel request
+---
 
-### HR Admin
-- `POST /api/admin/register-employee` - Register new employee
-- `GET /api/admin/employees` - Get all employees
-- `PUT /api/admin/employees/{id}` - Update employee
-- `POST /api/admin/employees/{id}/deactivate` - Deactivate employee
-- `POST /api/admin/employees/{id}/face-template` - Update face template
+## 🔐 Authentication Endpoints
 
-### Data Migration
-- `POST /api/migration/initialize` - Initialize default data
-- `POST /api/migration/import-employees` - Import employees from CSV
-- `GET /api/migration/csv-template` - Get CSV import template
+### POST /api/auth/login
+Login user and return JWT token.
 
-### System Health & Monitoring
-- `GET /api/test/email?to=<email>` - Test email service configuration
-- `GET /actuator/health` - Application health status (Spring Boot Actuator)
+**Request:**
+```json
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
 
-### Development & Debugging
-- `GET /api/auth/debug/hash` - Debug password hashing
-- `POST /api/auth/debug/verify` - Debug password verification
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Login successful",
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "tokenType": "Bearer",
+    "expiresIn": 86400,
+    "employee": {
+      "id": 1,
+      "email": "user@example.com",
+      "firstName": "John",
+      "lastName": "Doe",
+      "role": "EMPLOYEE"
+    }
+  }
+}
+```
+
+### GET /api/auth/me
+Get current authenticated user information.
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "email": "user@example.com",
+    "firstName": "John",
+    "lastName": "Doe",
+    "employeeId": "EMP001",
+    "role": "EMPLOYEE",
+    "isActive": true
+  }
+}
+```
+
+---
+
+## 🔑 Password Reset Endpoints
+
+### POST /api/auth/password-reset/forgot
+Request password reset link.
+
+**Request:**
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "If an account with this email exists, a password reset link has been sent.",
+  "expiresIn": "1 hour"
+}
+```
+
+### POST /api/auth/password-reset/reset
+Reset password with token.
+
+**Request:**
+```json
+{
+  "token": "uuid-token-here",
+  "newPassword": "NewSecurePass123",
+  "confirmPassword": "NewSecurePass123"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Password has been successfully reset."
+}
+```
+
+### GET /api/auth/password-reset/verify-token
+Verify reset token validity.
+
+**Query Parameters:** `?token=uuid-token-here`
+
+**Response:**
+```json
+{
+  "valid": true,
+  "message": "Token is valid"
+}
+```
+
+---
+
+## ⏰ Attendance Management Endpoints
+
+### POST /api/attendance/clock-in
+Clock in with face verification and location tracking.
+
+**Request:**
+```json
+{
+  "latitude": -6.2088,
+  "longitude": 106.8456,
+  "faceImage": "base64-encoded-face-image"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Clock in successful",
+  "data": {
+    "id": 123,
+    "clockInTime": "2025-10-04T08:00:00",
+    "location": {
+      "latitude": -6.2088,
+      "longitude": 106.8456
+    },
+    "faceRecognitionConfidence": 0.95
+  }
+}
+```
+
+### POST /api/attendance/clock-out
+Clock out from current attendance session.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Clock out successful",
+  "data": {
+    "id": 123,
+    "clockInTime": "2025-10-04T08:00:00",
+    "clockOutTime": "2025-10-04T17:00:00",
+    "totalHours": 9.0
+  }
+}
+```
+
+### GET /api/attendance/today
+Get today's attendance record.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "clockInTime": "2025-10-04T08:00:00",
+    "clockOutTime": null,
+    "status": "CLOCKED_IN"
+  }
+}
+```
+
+### GET /api/attendance/status
+Get current attendance status.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "status": "CLOCKED_IN",
+    "canClockIn": false,
+    "canClockOut": true
+  }
+}
+```
+
+### GET /api/attendance/history
+Get attendance history with pagination.
+
+**Query Parameters:**
+- `page` (default: 0) - Page number
+- `size` (default: 10) - Items per page
+- `startDate` (optional) - Filter by start date (yyyy-MM-dd)
+- `endDate` (optional) - Filter by end date (yyyy-MM-dd)
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "id": 123,
+        "clockInTime": "2025-10-04T08:00:00",
+        "clockOutTime": "2025-10-04T17:00:00",
+        "totalHours": 9.0,
+        "location": "Office"
+      }
+    ],
+    "totalElements": 50,
+    "totalPages": 5,
+    "currentPage": 1
+  }
+}
+```
+
+---
+
+## 🏖️ Leave Management Endpoints
+
+### POST /api/leave/request
+Submit new leave request.
+
+**Request:**
+```json
+{
+  "leaveType": "ANNUAL",
+  "startDate": "2025-12-01",
+  "endDate": "2025-12-05",
+  "reason": "Family vacation"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Leave request submitted successfully",
+  "data": {
+    "uuid": "b350343f-ab94-4e37-8dd8-c25604942d52",
+    "leaveType": "ANNUAL",
+    "startDate": "2025-12-01",
+    "endDate": "2025-12-05",
+    "totalDays": 5,
+    "reason": "Family vacation",
+    "status": "PENDING",
+    "remainingBalance": 10,
+    "createdAt": "2025-10-04T22:00:00",
+    "createdById": {
+      "id": 1,
+      "employeeCode": "EMP001",
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "john@example.com"
+    }
+  }
+}
+```
+
+### GET /api/leave/my-requests
+Get user's leave requests with pagination.
+
+**Query Parameters:**
+- `page` (default: 0) - Page number
+- `size` (default: 10) - Items per page
+- `days` (default: 30) - Filter by last N days
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "uuid": "b350343f-ab94-4e37-8dd8-c25604942d52",
+        "leaveType": "ANNUAL",
+        "startDate": "2025-12-01",
+        "endDate": "2025-12-05",
+        "status": "PENDING",
+        "remainingBalance": 10
+      }
+    ],
+    "totalElements": 15,
+    "totalPages": 2,
+    "currentPage": 1
+  }
+}
+```
+
+### GET /api/leave/request/{uuid}
+Get specific leave request by UUID.
+
+**Response:**
+```json
+{
+  "data": {
+    "uuid": "b350343f-ab94-4e37-8dd8-c25604942d52",
+    "leaveType": "ANNUAL",
+    "startDate": "2025-12-01",
+    "endDate": "2025-12-05",
+    "status": "APPROVED",
+    "remainingBalance": 10,
+    "createdAt": "2025-10-04T22:00:00",
+    "createdById": {
+      "id": 1,
+      "employeeCode": "EMP001",
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "john@example.com"
+    },
+    "updatedById": {
+      "id": 2,
+      "employeeCode": "SUP001",
+      "firstName": "Jane",
+      "lastName": "Smith",
+      "email": "jane@example.com"
+    }
+  },
+  "message": "Leave record retrieved successfully"
+}
+```
+
+### GET /api/leave/current
+Get current active leave.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Current leave found",
+  "data": {
+    "uuid": "b350343f-ab94-4e37-8dd8-c25604942d52",
+    "leaveType": "ANNUAL",
+    "startDate": "2025-12-01",
+    "endDate": "2025-12-05",
+    "status": "APPROVED"
+  }
+}
+```
+
+### POST /api/leave/supervisor/approve/{uuid}
+Approve leave request (SUPERVISOR role only).
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Leave request approved successfully",
+  "data": {
+    "uuid": "b350343f-ab94-4e37-8dd8-c25604942d52",
+    "status": "APPROVED",
+    "updatedById": {
+      "id": 2,
+      "employeeCode": "SUP001",
+      "firstName": "Jane",
+      "lastName": "Smith",
+      "email": "jane@example.com"
+    }
+  }
+}
+```
+
+### POST /api/leave/supervisor/reject/{uuid}
+Reject leave request (SUPERVISOR role only).
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Leave request rejected successfully",
+  "data": {
+    "uuid": "b350343f-ab94-4e37-8dd8-c25604942d52",
+    "status": "REJECTED",
+    "updatedById": {
+      "id": 2,
+      "employeeCode": "SUP001",
+      "firstName": "Jane",
+      "lastName": "Smith",
+      "email": "jane@example.com"
+    }
+  }
+}
+```
+
+### GET /api/leave/balance
+Get leave balance information.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "annual": 12,
+    "sick": 6,
+    "maternity": 90,
+    "paternity": 7
+  }
+}
+```
+
+---
+
+## ✈️ Business Travel Management Endpoints
+
+### POST /api/business-travel/request
+Submit new business travel request.
+
+**Request:**
+```json
+{
+  "city": "Singapore",
+  "startDate": "2025-11-10",
+  "endDate": "2025-11-12",
+  "reason": "Client meeting and project discussion"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Business travel request submitted successfully",
+  "data": {
+    "uuid": "46bcf50a-cfc5-4f53-910d-5f8f96670d6f",
+    "employeeId": 4146,
+    "employeeName": "Citra Ningsih",
+    "city": "Singapore",
+    "startDate": "2025-11-10",
+    "endDate": "2025-11-12",
+    "totalDays": 3,
+    "reason": "Client meeting and project discussion",
+    "status": "PENDING",
+    "createdAt": "2025-10-04T20:28:24",
+    "createdById": {
+      "id": 4146,
+      "employeeCode": "EMP67139",
+      "firstName": "Citra",
+      "lastName": "Ningsih",
+      "email": "mcrdik@gmail.com"
+    }
+  }
+}
+```
+
+### GET /api/business-travel/my-requests
+Get user's business travel requests with pagination.
+
+**Query Parameters:**
+- `page` (default: 0) - Page number
+- `size` (default: 10) - Items per page
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "uuid": "46bcf50a-cfc5-4f53-910d-5f8f96670d6f",
+        "city": "Singapore",
+        "startDate": "2025-11-10",
+        "endDate": "2025-11-12",
+        "status": "PENDING",
+        "totalDays": 3
+      }
+    ],
+    "totalElements": 8,
+    "totalPages": 1,
+    "currentPage": 1
+  }
+}
+```
+
+### GET /api/business-travel/request/{uuid}
+Get specific business travel request by UUID.
+
+**Response:**
+```json
+{
+  "data": {
+    "uuid": "46bcf50a-cfc5-4f53-910d-5f8f96670d6f",
+    "employeeId": 4146,
+    "employeeName": "Citra Ningsih",
+    "city": "Singapore",
+    "startDate": "2025-11-10",
+    "endDate": "2025-11-12",
+    "totalDays": 3,
+    "reason": "Client meeting and project discussion",
+    "status": "PENDING",
+    "createdAt": "2025-10-04T20:28:24",
+    "createdById": {
+      "id": 4146,
+      "employeeCode": "EMP67139",
+      "firstName": "Citra",
+      "lastName": "Ningsih",
+      "email": "mcrdik@gmail.com"
+    }
+  },
+  "message": "Travel record retrieved successfully"
+}
+```
+
+### GET /api/business-travel/current
+Get current active business travel.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "uuid": "46bcf50a-cfc5-4f53-910d-5f8f96670d6f",
+      "city": "Singapore",
+      "startDate": "2025-11-10",
+      "endDate": "2025-11-12",
+      "status": "APPROVED"
+    }
+  ]
+}
+```
+
+### POST /api/business-travel/supervisor/approve/{uuid}
+Approve business travel request (SUPERVISOR role only).
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Business travel request approved successfully",
+  "data": {
+    "uuid": "46bcf50a-cfc5-4f53-910d-5f8f96670d6f",
+    "status": "APPROVED",
+    "updatedById": {
+      "id": 2,
+      "employeeCode": "SUP001",
+      "firstName": "Jane",
+      "lastName": "Smith",
+      "email": "jane@example.com"
+    }
+  }
+}
+```
+
+### POST /api/business-travel/supervisor/reject/{uuid}
+Reject business travel request (SUPERVISOR role only).
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Business travel request rejected successfully",
+  "data": {
+    "uuid": "46bcf50a-cfc5-4f53-910d-5f8f96670d6f",
+    "status": "REJECTED",
+    "updatedById": {
+      "id": 2,
+      "employeeCode": "SUP001",
+      "firstName": "Jane",
+      "lastName": "Smith",
+      "email": "jane@example.com"
+    }
+  }
+}
+```
+
+### GET /api/business-travel/supervisor/pending
+Get pending business travel requests for supervisor (SUPERVISOR role only).
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "uuid": "46bcf50a-cfc5-4f53-910d-5f8f96670d6f",
+      "employeeName": "Citra Ningsih",
+      "city": "Singapore",
+      "startDate": "2025-11-10",
+      "endDate": "2025-11-12",
+      "status": "PENDING"
+    }
+  ]
+}
+```
+
+---
+
+## 👥 HR Admin Endpoints (ADMIN/HR roles only)
+
+### POST /api/admin/register-employee
+Register new employee.
+
+**Request:**
+```json
+{
+  "firstName": "John",
+  "lastName": "Doe",
+  "email": "john.doe@company.com",
+  "password": "TempPass123",
+  "employeeId": "EMP123",
+  "role": "EMPLOYEE",
+  "supervisorId": 2
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Employee registered successfully",
+  "data": {
+    "id": 123,
+    "firstName": "John",
+    "lastName": "Doe",
+    "email": "john.doe@company.com",
+    "employeeId": "EMP123",
+    "role": "EMPLOYEE",
+    "isActive": true
+  }
+}
+```
+
+### GET /api/admin/employees
+Get all employees with pagination and filtering.
+
+**Query Parameters:**
+- `page` (default: 0) - Page number
+- `size` (default: 10) - Items per page
+- `search` (optional) - Search by name or email
+- `role` (optional) - Filter by role
+- `active` (optional) - Filter by active status
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "id": 1,
+        "firstName": "John",
+        "lastName": "Doe",
+        "email": "john.doe@company.com",
+        "employeeId": "EMP001",
+        "role": "EMPLOYEE",
+        "isActive": true
+      }
+    ],
+    "totalElements": 50,
+    "totalPages": 5,
+    "currentPage": 1
+  }
+}
+```
+
+### PUT /api/admin/employees/{id}
+Update employee information.
+
+**Request:**
+```json
+{
+  "firstName": "John",
+  "lastName": "Smith",
+  "email": "john.smith@company.com",
+  "role": "SUPERVISOR"
+}
+```
+
+### POST /api/admin/employees/{id}/deactivate
+Deactivate employee account.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Employee deactivated successfully"
+}
+```
+
+### POST /api/admin/employees/{id}/face-template
+Update employee face template.
+
+**Request:** `multipart/form-data` with face image file.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Face template updated successfully"
+}
+```
+
+---
+
+## 📊 Data Migration Endpoints (ADMIN role only)
+
+### POST /api/migration/initialize
+Initialize default system data.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Default data initialized successfully",
+  "data": {
+    "rolesCreated": 4,
+    "adminUserCreated": 1
+  }
+}
+```
+
+### POST /api/migration/import-employees
+Import employees from CSV file.
+
+**Request:** `multipart/form-data` with CSV file.
+
+**CSV Format:**
+```csv
+firstName,lastName,email,employeeId,role,supervisorId
+John,Doe,john.doe@company.com,EMP001,EMPLOYEE,2
+Jane,Smith,jane.smith@company.com,EMP002,SUPERVISOR,
+```
+
+### GET /api/migration/csv-template
+Download CSV template for employee import.
+
+**Response:** CSV file download
+
+---
+
+## 🏥 System Health & Monitoring Endpoints
+
+### GET /api/test/email
+Test email service configuration.
+
+**Query Parameters:** `?to=test@example.com`
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Test email sent successfully"
+}
+```
+
+### GET /actuator/health
+Application health status (Spring Boot Actuator).
+
+**Response:**
+```json
+{
+  "status": "UP",
+  "components": {
+    "db": {
+      "status": "UP",
+      "details": {
+        "database": "PostgreSQL",
+        "validationQuery": "isValid()"
+      }
+    },
+    "diskSpace": {
+      "status": "UP",
+      "details": {
+        "total": 250685575168,
+        "free": 125342787584,
+        "threshold": 10485760
+      }
+    }
+  }
+}
+```
+
+---
+
+## 🐛 Development & Debugging Endpoints
+
+### GET /api/auth/debug/hash
+Debug password hashing (development only).
+
+**Query Parameters:** `?password=test123`
+
+**Response:**
+```json
+{
+  "password": "test123",
+  "hashedPassword": "$2a$10$..."
+}
+```
+
+### POST /api/auth/debug/verify
+Debug password verification (development only).
+
+**Request:**
+```json
+{
+  "password": "test123",
+  "hashedPassword": "$2a$10$..."
+}
+```
+
+**Response:**
+```json
+{
+  "valid": true,
+  "matches": true
+}
+```
+
+---
+
+## 📝 Role-Based Access Control
+
+### Role Hierarchy
+1. **ADMIN** - Full system access
+2. **HR** - Employee management and reporting
+3. **SUPERVISOR** - Approve/reject leave and travel requests for team
+4. **EMPLOYEE** - Personal data and requests only
+
+### Endpoint Access Matrix
+
+| Endpoint | EMPLOYEE | SUPERVISOR | HR | ADMIN |
+|----------|----------|------------|----|-------|
+| /api/auth/* | ✅ | ✅ | ✅ | ✅ |
+| /api/attendance/* | ✅ | ✅ | ✅ | ✅ |
+| /api/leave/request | ✅ | ✅ | ✅ | ✅ |
+| /api/leave/my-requests | ✅ | ✅ | ✅ | ✅ |
+| /api/leave/supervisor/* | ❌ | ✅ | ✅ | ✅ |
+| /api/business-travel/request | ✅ | ✅ | ✅ | ✅ |
+| /api/business-travel/my-requests | ✅ | ✅ | ✅ | ✅ |
+| /api/business-travel/supervisor/* | ❌ | ✅ | ✅ | ✅ |
+| /api/admin/* | ❌ | ❌ | ✅ | ✅ |
+| /api/migration/* | ❌ | ❌ | ❌ | ✅ |
+
+### Error Codes
+- `UNAUTHORIZED` (401) - Invalid or missing JWT token
+- `FORBIDDEN` (403) - Insufficient role permissions
+- `NOT_FOUND` (404) - Resource not found
+- `BAD_REQUEST` (400) - Validation errors
+- `CONFLICT` (409) - Business rule violations
+- `TOO_MANY_REQUESTS` (429) - Rate limit exceeded
+- `INTERNAL_SERVER_ERROR` (500) - System errors
+
+---
+
+## 🔄 Rate Limiting
+
+### Authentication Endpoints
+- **Login**: 5 attempts per 5 minutes per IP
+- **Password Reset Request**: 3 requests per hour per email
+- **Password Reset Confirm**: 5 attempts per hour per token
+
+### Business Rules
+- **Clock In**: Only once per day
+- **Leave Overlap**: Prevents conflicting leave periods
+- **Business Travel Overlap**: Prevents travel during approved leave
+- **Approval**: Only supervisors can approve subordinate requests
 
 ## 🏗 Project Structure
 

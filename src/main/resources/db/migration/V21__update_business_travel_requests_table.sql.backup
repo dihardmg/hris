@@ -1,0 +1,76 @@
+-- Migration: Update business_travel_requests table structure
+-- This migration updates the table to match the new requirements
+
+-- Step 1: Add new columns
+ALTER TABLE business_travel_requests
+ADD COLUMN IF NOT EXISTS city VARCHAR(255),
+ADD COLUMN IF NOT EXISTS total_days INTEGER DEFAULT 1,
+ADD COLUMN IF NOT EXISTS reason VARCHAR(255),
+ADD COLUMN IF NOT EXISTS "uuid" UUID DEFAULT gen_random_uuid(),
+ADD COLUMN IF NOT EXISTS created_by BIGINT,
+ADD COLUMN IF NOT EXISTS updated_by BIGINT;
+
+-- Step 2: Add unique constraint for uuid
+ALTER TABLE business_travel_requests
+ADD CONSTRAINT IF NOT EXISTS uk_business_travel_requests_uuid UNIQUE ("uuid");
+
+-- Step 3: Update existing data - copy values from old columns to new columns
+UPDATE business_travel_requests
+SET city = destination
+WHERE city IS NULL AND destination IS NOT NULL;
+
+UPDATE business_travel_requests
+SET reason = travel_purpose
+WHERE reason IS NULL AND travel_purpose IS NOT NULL;
+
+UPDATE business_travel_requests
+SET total_days = GREATEST(1, EXTRACT(DAY FROM (end_date - start_date)) + 1)
+WHERE total_days = 1 AND start_date IS NOT NULL AND end_date IS NOT NULL;
+
+-- Step 4: Make new columns NOT NULL (after data migration)
+-- First, set default values for any NULL records
+UPDATE business_travel_requests
+SET city = COALESCE(city, 'Unknown'),
+    total_days = COALESCE(total_days, 1)
+WHERE city IS NULL OR total_days IS NULL;
+
+-- Then add NOT NULL constraints
+ALTER TABLE business_travel_requests
+ALTER COLUMN city SET NOT NULL,
+ALTER COLUMN total_days SET NOT NULL,
+ALTER COLUMN "uuid" SET NOT NULL;
+
+-- Step 5: Drop old constraints that reference columns we'll remove
+ALTER TABLE business_travel_requests
+DROP CONSTRAINT IF EXISTS chk_transportation_type;
+
+ALTER TABLE business_travel_requests
+DROP CONSTRAINT IF EXISTS chk_travel_costs;
+
+ALTER TABLE business_travel_requests
+DROP CONSTRAINT IF EXISTS chk_actual_cost;
+
+-- Step 6: Drop old columns (this is safe now that constraints are removed)
+ALTER TABLE business_travel_requests
+DROP COLUMN IF EXISTS travel_purpose,
+DROP COLUMN IF EXISTS destination,
+DROP COLUMN IF EXISTS estimated_cost,
+DROP COLUMN IF EXISTS actual_cost,
+DROP COLUMN IF EXISTS transportation_type,
+DROP COLUMN IF EXISTS accommodation_required;
+
+-- Step 7: Add indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_business_travel_requests_employee_id ON business_travel_requests (employee_id);
+CREATE INDEX IF NOT EXISTS idx_business_travel_requests_status ON business_travel_requests (status);
+CREATE INDEX IF NOT EXISTS idx_business_travel_requests_start_date ON business_travel_requests (start_date);
+CREATE INDEX IF NOT EXISTS idx_business_travel_requests_created_at ON business_travel_requests (created_at);
+CREATE INDEX IF NOT EXISTS idx_business_travel_requests_uuid ON business_travel_requests ("uuid");
+
+-- Step 8: Add foreign key constraints for audit fields
+ALTER TABLE business_travel_requests
+ADD CONSTRAINT IF NOT EXISTS fk_business_travel_requests_created_by
+    FOREIGN KEY (created_by) REFERENCES employees(id) ON DELETE SET NULL;
+
+ALTER TABLE business_travel_requests
+ADD CONSTRAINT IF NOT EXISTS fk_business_travel_requests_updated_by
+    FOREIGN KEY (updated_by) REFERENCES employees(id) ON DELETE SET NULL;

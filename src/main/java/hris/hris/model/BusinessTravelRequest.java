@@ -5,10 +5,11 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "business_travel_requests")
@@ -21,6 +22,9 @@ public class BusinessTravelRequest {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "uuid", nullable = false, unique = true)
+    private UUID uuid;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
@@ -28,11 +32,8 @@ public class BusinessTravelRequest {
     @Column(name = "employee_id", insertable = false, updatable = false)
     private Long employeeId;
 
-    @Column(name = "travel_purpose", nullable = false)
-    private String travelPurpose;
-
-    @Column(name = "destination", nullable = false)
-    private String destination;
+    @Column(name = "city", nullable = false)
+    private String city;
 
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
@@ -40,35 +41,16 @@ public class BusinessTravelRequest {
     @Column(name = "end_date", nullable = false)
     private LocalDate endDate;
 
-    @Column(name = "estimated_cost")
-    private BigDecimal estimatedCost;
+    @Column(name = "total_days", nullable = false)
+    private Integer totalDays;
 
-    @Column(name = "actual_cost")
-    private BigDecimal actualCost;
+    @Column(name = "reason")
+    private String reason;
 
-    @Column(name = "transportation_type")
-    @Enumerated(EnumType.STRING)
-    private TransportationType transportationType;
-
-    @Column(name = "accommodation_required")
-    private Boolean accommodationRequired = false;
-
-    @Column(name = "status")
+    @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
     private RequestStatus status = RequestStatus.PENDING;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "approved_by")
-    private Employee approvedBy;
-
-    @Column(name = "approved_by_id", insertable = false, updatable = false)
-    private Long approvedById;
-
-    @Column(name = "approval_date")
-    private LocalDateTime approvalDate;
-
-    @Column(name = "rejection_reason")
-    private String rejectionReason;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -77,8 +59,39 @@ public class BusinessTravelRequest {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    public enum TransportationType {
-        FLIGHT, TRAIN, BUS, CAR, OTHER
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by")
+    private Employee createdBy;
+
+    @Column(name = "created_by", insertable = false, updatable = false)
+    private Long createdById;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "updated_by")
+    private Employee updatedBy;
+
+    @Column(name = "updated_by", insertable = false, updatable = false)
+    private Long updatedById;
+
+    @PrePersist
+    public void prePersist() {
+        // Generate UUID if it's null
+        if (uuid == null) {
+            uuid = UUID.randomUUID();
+        }
+
+        // Calculate total days (end_date - start_date + 1)
+        if (startDate != null && endDate != null) {
+            totalDays = (int) java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate) + 1;
+        }
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        // Recalculate total days on updates
+        if (startDate != null && endDate != null) {
+            totalDays = (int) java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate) + 1;
+        }
     }
 
     public enum RequestStatus {

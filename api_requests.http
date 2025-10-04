@@ -10,16 +10,18 @@
 @hostname = localhost:8081
 @baseUrl = http://{{hostname}}
 
-# --- AUTHENTICATION TOKENS ---
-### @token = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJlbXBsb3llZUBocmlzLmNvbSIsImVtcGxveWVlSWQiOjQsImVtcGxveWVlQ29kZSI6IkVNUDAwMSIsImlhdCI6MTc1OTQxODg4NiwiZXhwIjoxNzU5NTA1Mjg2fQ.Tt0sukhGoydJshsxOg4SVrw80tUiH1h2y4mdX8RAL01Ej7bu0M53LRIY0xwskqCL
+# --- AUTHENTICATION TOKENS (Update after login) ---
+@token = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJtY3JkaWtAZ21haWwuY29tIiwiZW1wbG95ZWVJZCI6NDE0NiwiZW1wbG95ZWVDb2RlIjoiRU1QNjcxMzkiLCJ0aW1lem9uZSI6IkFzaWEvSmFrYXJ0YSIsImlhdCI6MTc1OTU5NDA2NywiZXhwIjoxNzU5NjgwNDY3fQ.fXc51OKMLu5nFm5zUl0QSa-EtU9W2J-3ybao7nM1HDa0T4bEKlzzD3ChbAGRXKFJ
 
-@token = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJtY3JkaWtAZ21haWwuY29tIiwiZW1wbG95ZWVJZCI6NDE0NiwiZW1wbG95ZWVDb2RlIjoiRU1QNjcxMzkiLCJ0aW1lem9uZSI6IkFzaWEvSmFrYXJ0YSIsImlhdCI6MTc1OTU1OTAzMCwiZXhwIjoxNzU5NjQ1NDMwfQ.yXFWeaasV2VuzVXe_49InhmtmGvzC6rBYh0HDSUTr1mUl7tq5uiEqzQJSjfkQ7g-
+@adminToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+@supervisorToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
-@adminToken = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJzdXBlcnZpc29yQGhyaXMuY29tIiwiZW1wbG95ZWVJZCI6MywiZW1wbG95ZWVDb2RlIjoiU1VQMDAxIiwidGltZXpvbmUiOiJBc2lhL0pha2FydGEiLCJpYXQiOjE3NTk1NjI2OTMsImV4cCI6MTc1OTY0OTA5M30.8ak__3WzprFL_fq6IWc9bxUmeZM7m_M8B5IIftBvxjaBr9thYlfMgKPIGZt359Gb
-# --- DYNAMIC VARIABLES ---
-@employeeId = 4146
-@attendanceUuid = 74dfbcdd-8ae8-4476-8f58-ae81f367da54
+# --- DYNAMIC VARIABLES (Update after creating resources) ---
+@employeeId = 1
+@attendanceUuid = 550e8400-e29b-41d4-a716-446655440000
 @leaveRequestUuid = b350343f-ab94-4e37-8dd8-c25604942d52
+@businessTravelUuid = 46bcf50a-cfc5-4f53-910d-5f8f96670d6f
+@passwordResetToken = your-reset-token-here
 
 ### =====================================================
 ### 1. AUTHENTICATION ENDPOINTS
@@ -30,20 +32,41 @@ POST {{baseUrl}}/api/auth/login
 Content-Type: application/json
 
 {
-  "email": "employee@hris.com",
-  "password": "admin123"
+  "email": "mcrdik@gmail.com",
+  "password": "admin1234"
 }
 
 > {%
   if (response.status === 200) {
     client.global.set("token", response.body.data.token);
     client.log("✅ Employee login successful!");
+    client.log("Token: " + response.body.data.token);
+    client.log("Employee: " + response.body.data.employee.firstName + " " + response.body.data.employee.lastName);
   } else {
     client.log("❌ Employee login failed: " + response.body.message);
   }
 %}
 
-### @name loginAdmin/supervisor
+### @name loginAdmin
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@hris.com",
+  "password": "admin123"
+}
+
+> {%
+  if (response.status === 200) {
+    client.global.set("adminToken", response.body.data.token);
+    client.log("✅ Admin login successful!");
+    client.log("Token: " + response.body.data.token);
+  } else {
+    client.log("❌ Admin login failed: " + response.body.message);
+  }
+%}
+
+### @name loginSupervisor
 POST {{baseUrl}}/api/auth/login
 Content-Type: application/json
 
@@ -52,35 +75,40 @@ Content-Type: application/json
   "password": "admin123"
 }
 
-### @name user emp
-POST {{baseUrl}}/api/auth/login
-Content-Type: application/json
-
-{
-  "email": "mcrdik@gmail.com",
-  "password": "admin1234"
-}
-
-
 > {%
   if (response.status === 200) {
-    client.global.set("adminToken", response.body.data.token);
-    client.log("✅ Admin login successful!");
+    client.global.set("supervisorToken", response.body.data.token);
+    client.log("✅ Supervisor login successful!");
+    client.log("Token: " + response.body.data.token);
   } else {
-    client.log("❌ Admin login failed: " + response.body.message);
+    client.log("❌ Supervisor login failed: " + response.body.message);
   }
 %}
-
-### @name validateToken
-POST {{baseUrl}}/api/auth/validate
-Authorization: Bearer {{token}}
 
 ### @name getCurrentUser
 GET {{baseUrl}}/api/auth/me
 Authorization: Bearer {{token}}
 
+### @name loginInvalidCredentials
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "invalid@hris.com",
+  "password": "wrongpassword"
+}
+
+### @name loginInvalidFormat
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "invalid-email",
+  "password": ""
+}
+
 ### =====================================================
-### 1.5. PASSWORD RESET ENDPOINTS
+### 2. PASSWORD RESET ENDPOINTS
 ### =====================================================
 
 ### @name requestPasswordReset
@@ -95,6 +123,8 @@ Content-Type: application/json
   if (response.status === 200) {
     client.log("✅ Password reset request sent successfully!");
     client.log("Response: " + response.body.message);
+    client.log("📧 Check your email for the reset link");
+    client.log("🔗 Token will be valid for 1 hour");
   } else {
     client.log("❌ Password reset request failed: " + response.body.message);
   }
@@ -105,7 +135,7 @@ POST {{baseUrl}}/api/auth/password-reset/forgot
 Content-Type: application/json
 
 {
-  "email": "nonexistenthris.com"
+  "email": "nonexistent@example.com"
 }
 
 > {%
@@ -125,16 +155,16 @@ Content-Type: application/json
 }
 
 ### @name verifyResetToken
-GET {{baseUrl}}/api/auth/password-reset/verify-token?token=d2089980-f156-492d-8cc3-c0699a9e871a
+GET {{baseUrl}}/api/auth/password-reset/verify-token?token={{passwordResetToken}}
 
 ### @name resetPasswordWithValidToken
 POST {{baseUrl}}/api/auth/password-reset/reset
 Content-Type: application/json
 
 {
-  "token": "d2089980-f156-492d-8cc3-c0699a9e871a",
-  "newPassword": "admin1234",
-  "confirmPassword": "admin1234"
+  "token": "{{passwordResetToken}}",
+  "newPassword": "NewSecurePass123!",
+  "confirmPassword": "NewSecurePass123!"
 }
 
 > {%
@@ -151,9 +181,9 @@ POST {{baseUrl}}/api/auth/password-reset/reset
 Content-Type: application/json
 
 {
-  "token": "d2089980-f156-492d-8cc3-c0699a9e871a",
-  "newPassword": "Terserah123@",
-  "confirmPassword": "Terserah123@"
+  "token": "{{passwordResetToken}}",
+  "newPassword": "weak",
+  "confirmPassword": "weak"
 }
 
 ### @name resetPasswordWithMismatch
@@ -161,9 +191,9 @@ POST {{baseUrl}}/api/auth/password-reset/reset
 Content-Type: application/json
 
 {
-  "token": "valid-reset-token-here",
-  "newPassword": "NewSecurePassword123!",
-  "confirmPassword": "DifferentPassword123!"
+  "token": "{{passwordResetToken}}",
+  "newPassword": "NewSecurePass123!",
+  "confirmPassword": "DifferentPassword!"
 }
 
 ### @name resetPasswordWithInvalidToken
@@ -172,39 +202,12 @@ Content-Type: application/json
 
 {
   "token": "invalid-or-expired-token",
-  "newPassword": "NewSecurePassword123!",
-  "confirmPassword": "NewSecurePassword123!"
-}
-
-### @name resetPasswordRequestTest
-POST {{baseUrl}}/api/auth/password-reset/forgot
-Content-Type: application/json
-
-{
-  "email": "citra.ningsih@hris.com"
-}
-
-> {%
-  if (response.status === 200) {
-    client.log("✅ Password reset email sent to citra.ningsih@hris.com");
-    client.log("📧 Check your email for the reset link");
-    client.log("🔗 Token will be valid for 1 hour");
-  } else {
-    client.log("❌ Failed to send password reset email");
-  }
-%}
-
-### @name loginInvalidCredentials
-POST {{baseUrl}}/api/auth/login
-Content-Type: application/json
-
-{
-  "email": "invalid@hris.com",
-  "password": "wrongpassword"
+  "newPassword": "NewSecurePass123!",
+  "confirmPassword": "NewSecurePass123!"
 }
 
 ### =====================================================
-### 2. ATTENDANCE ENDPOINTS
+### 3. ATTENDANCE MANAGEMENT ENDPOINTS
 ### =====================================================
 
 ### @name clockIn
@@ -215,10 +218,20 @@ Authorization: Bearer {{token}}
 {
   "latitude": -6.2088,
   "longitude": 106.8456,
-  "locationAddress": "Jakarta Office",
   "faceImage": "base64-encoded-face-image-data",
   "notes": "Regular work day"
 }
+
+> {%
+  if (response.status === 200) {
+    client.global.set("attendanceUuid", response.body.data.uuid);
+    client.log("✅ Clock in successful!");
+    client.log("Attendance UUID: " + response.body.data.uuid);
+    client.log("Clock In Time: " + response.body.data.clockInTime);
+  } else {
+    client.log("❌ Clock in failed: " + response.body.message);
+  }
+%}
 
 ### @name clockInOutsideGeofence
 POST {{baseUrl}}/api/attendance/clock-in
@@ -228,12 +241,36 @@ Authorization: Bearer {{token}}
 {
   "latitude": -6.3000,
   "longitude": 106.9000,
-  "locationAddress": "Outside Office",
   "faceImage": "base64-encoded-face-image-data",
   "notes": "Working from client location"
 }
 
+### @name clockInTwice
+POST {{baseUrl}}/api/attendance/clock-in
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "latitude": -6.2088,
+  "longitude": 106.8456,
+  "faceImage": "base64-encoded-face-image-data",
+  "notes": "Second attempt - should fail"
+}
+
 ### @name clockOut
+POST {{baseUrl}}/api/attendance/clock-out
+Authorization: Bearer {{token}}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ Clock out successful!");
+    client.log("Total Hours: " + response.body.data.totalHours);
+  } else {
+    client.log("❌ Clock out failed: " + response.body.message);
+  }
+%}
+
+### @name clockOutWithoutClockIn
 POST {{baseUrl}}/api/attendance/clock-out
 Authorization: Bearer {{token}}
 
@@ -253,44 +290,24 @@ Authorization: Bearer {{token}}
 GET {{baseUrl}}/api/attendance/history?page=0&size=5
 Authorization: Bearer {{token}}
 
-# =====================================================
-# GET ATTENDANCE BY UUID
-# =====================================================
-# This endpoint retrieves a specific attendance record by UUID
-# SECURITY: Uses UUID instead of numeric ID to prevent IDOR attacks
-# Access Control:
-# - Employees can only view their own attendance records
-# - Supervisors, HR, and Admin can view all attendance records
-# Returns complete attendance details with location, timing, and geofence information
-# UUID format: 550e8400-e29b-41d4-a716-446655440000 (128-bit random identifier)
+### @name getAttendanceHistoryWithDateFilter
+GET {{baseUrl}}/api/attendance/history?startDate=2025-01-01&endDate=2025-01-31
+Authorization: Bearer {{token}}
 
 ### @name getAttendanceByUuid
 GET {{baseUrl}}/api/attendance/{{attendanceUuid}}
 Authorization: Bearer {{token}}
 
-### @name getNonExistentAttendanceByUuid
-GET http://localhost:8083/api/attendance/74dfbcdd-8ae8-4476-8f58-ae81f367da54
-Authorization: Bearer {{token}}
-
 ### @name getAttendanceByUuidAsSupervisor
-GET {{baseUrl}}/api/attendance/2198d8b6-7218-44db-89c8-69485550458b
+GET {{baseUrl}}/api/attendance/{{attendanceUuid}}
 Authorization: Bearer {{adminToken}}
 
-### @name clockInTwice
-POST {{baseUrl}}/api/attendance/clock-in
-Content-Type: application/json
+### @name getNonExistentAttendanceByUuid
+GET {{baseUrl}}/api/attendance/550e8400-e29b-41d4-a716-446655449999
 Authorization: Bearer {{token}}
 
-{
-  "latitude": -6.2088,
-  "longitude": 106.8456,
-  "locationAddress": "Jakarta Office",
-  "faceImage": "base64-encoded-face-image-data",
-  "notes": "Second attempt"
-}
-
 ### =====================================================
-### 3. LEAVE MANAGEMENT ENDPOINTS
+### 4. LEAVE MANAGEMENT ENDPOINTS
 ### =====================================================
 
 ### @name submitAnnualLeave
@@ -299,16 +316,21 @@ Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "leaveType": "ANNUAL_LEAVE",
-  "startDate": "2025-12-09",
-  "endDate": "2025-12-09",
+  "leaveType": "ANNUAL",
+  "startDate": "2025-12-10",
+  "endDate": "2025-12-12",
   "reason": "Family vacation - attending wedding ceremony"
 }
 
 > {%
   if (response.status === 200) {
-    client.global.set("leaveRequestId", response.body.data.id);
-    client.log("✅ Leave request submitted! ID: " + response.body.data.id);
+    client.global.set("leaveRequestUuid", response.body.data.uuid);
+    client.log("✅ Leave request submitted!");
+    client.log("UUID: " + response.body.data.uuid);
+    client.log("Total Days: " + response.body.data.totalDays);
+    client.log("Remaining Balance: " + response.body.data.remainingBalance);
+  } else {
+    client.log("❌ Leave request submission failed: " + response.body.message);
   }
 %}
 
@@ -318,58 +340,54 @@ Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "leaveType": "SICK_LEAVE",
-  "startDate": "2025-10-05",
-  "endDate": "2025-10-05",
+  "leaveType": "SICK",
+  "startDate": "2025-11-15",
+  "endDate": "2025-11-15",
   "reason": "Medical appointment and recovery"
 }
 
-# =====================================================
-# GET MY LEAVE REQUESTS WITH PAGING
-# =====================================================
-# Supported Parameters:
-# - page: Page number (0-based, default: 0)
-# - size: Items per page (default: 10, max: 100)
-# - days: Filter by last N days (default: 30)
-# Examples:
-#   GET /api/leave/my-requests?page=0&size=5&days=30
-#   GET /api/leave/my-requests?page=1&size=10
-#   GET /api/leave/my-requests?days=7
-# Response includes pagination metadata:
-#   { "data": [...], "size": 5, "total": 23, "totalPages": 5, "currentPage": 1 }
-
-### @name getMyLeaveRequests
-GET {{baseUrl}}/api/leave/my-requests
-Authorization: Bearer {{token}}
-
-### @name loginEmployeeNew
-POST {{baseUrl}}/api/auth/login
+### @name submitMaternityLeave
+POST {{baseUrl}}/api/leave/request
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
 {
-  "email": "employee@hris.com",
-  "password": "admin123"
+  "leaveType": "MATERNITY",
+  "startDate": "2025-12-01",
+  "endDate": "2025-12-30",
+  "reason": "Maternity leave"
 }
 
-> {%
-  if (response.status === 200) {
-    client.global.set("token", response.body.data.token);
-    client.log("✅ Employee login successful!");
-  } else {
-    client.log("❌ Employee login failed: " + response.body.message);
-  }
-%}
-
-### @name getMyLeaveRequestsPage1
-GET {{baseUrl}}/api/leave/my-requests?page=1&size=2
+### @name submitLeaveWithInvalidDates
+POST {{baseUrl}}/api/leave/request
+Content-Type: application/json
 Authorization: Bearer {{token}}
 
-### @name getMyLeaveRequestsPage2
-GET {{baseUrl}}/api/leave/my-requests?page=1&size=5
+{
+  "leaveType": "ANNUAL",
+  "startDate": "2025-12-15",
+  "endDate": "2025-12-10",
+  "reason": "Invalid date range"
+}
+
+### @name submitLeaveWithPastDate
+POST {{baseUrl}}/api/leave/request
+Content-Type: application/json
 Authorization: Bearer {{token}}
+
+{
+  "leaveType": "ANNUAL",
+  "startDate": "2020-01-01",
+  "endDate": "2020-01-02",
+  "reason": "Past date"
+}
 
 ### @name getMyLeaveRequests
 GET {{baseUrl}}/api/leave/my-requests
+Authorization: Bearer {{token}}
+
+### @name getMyLeaveRequestsPaginated
+GET {{baseUrl}}/api/leave/my-requests?page=0&size=5
 Authorization: Bearer {{token}}
 
 ### @name getMyLeaveRequestsLast7Days
@@ -380,87 +398,183 @@ Authorization: Bearer {{token}}
 GET {{baseUrl}}/api/leave/my-requests?days=90
 Authorization: Bearer {{token}}
 
-### @name getCurrentLeave
-GET {{baseUrl}}/api/leave/current
-Authorization: Bearer {{token}}
-
-# =====================================================
-# NEW: Get Leave Request by UUID
-# =====================================================
-# This endpoint allows retrieving specific leave request details by UUID
-# SECURITY: Uses UUID instead of numeric ID to prevent IDOR attacks
-# Access Control:
-# - Employees can only view their own leave requests
-# - Supervisors can view subordinate requests
-# - HR/Admin can view all requests
-# Returns full leave request details with createdBy/updatedBy audit trail
-# UUID format: 550e8400-e29b-41d4-a716-446655440001 (128-bit random identifier)
-
 ### @name getLeaveRequestByUuid
 GET {{baseUrl}}/api/leave/request/{{leaveRequestUuid}}
 Authorization: Bearer {{token}}
 
 ### @name getLeaveRequestByUuidAsSupervisor
-GET {{baseUrl}}/api/leave/request/550e8400-e29b-41d4-a716-446655440003
-Authorization: Bearer {{adminToken}}
+GET {{baseUrl}}/api/leave/request/{{leaveRequestUuid}}
+Authorization: Bearer {{supervisorToken}}
 
 ### @name getNonExistentLeaveRequestByUuid
-GET {{baseUrl}}/api/leave/request/b350343f-ab94-4e37-8dd8-c25604942d52
-Authorization: Bearer {{token}}
-
-### @name getNonExistentLeaveRequest999
 GET {{baseUrl}}/api/leave/request/550e8400-e29b-41d4-a716-446655449999
 Authorization: Bearer {{token}}
-# Expected: 404 Not Found with "Leave request not found." message
-# SECURITY: No information leakage about whether specific UUIDs exist
+
+### @name getCurrentLeave
+GET {{baseUrl}}/api/leave/current
+Authorization: Bearer {{token}}
 
 ### @name approveLeaveRequest
 POST {{baseUrl}}/api/leave/supervisor/approve/{{leaveRequestUuid}}
-Authorization: Bearer {{adminToken}}
+Authorization: Bearer {{supervisorToken}}
 
+> {%
+  if (response.status === 200) {
+    client.log("✅ Leave request approved!");
+    client.log("Status: " + response.body.data.status);
+  } else {
+    client.log("❌ Leave approval failed: " + response.body.message);
+  }
+%}
 
 ### @name rejectLeaveRequest
 POST {{baseUrl}}/api/leave/supervisor/reject/{{leaveRequestUuid}}
-Authorization: Bearer {{adminToken}}
+Authorization: Bearer {{supervisorToken}}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ Leave request rejected!");
+    client.log("Status: " + response.body.data.status);
+  } else {
+    client.log("❌ Leave rejection failed: " + response.body.message);
+  }
+%}
+
+### @name approveLeaveRequestAsEmployee
+POST {{baseUrl}}/api/leave/supervisor/approve/{{leaveRequestUuid}}
+Authorization: Bearer {{token}}
+
+### @name getLeaveBalance
+GET {{baseUrl}}/api/leave/balance
+Authorization: Bearer {{token}}
+
+### @name getPendingLeaveRequestsForSupervisor
+GET {{baseUrl}}/api/leave/supervisor/pending
+Authorization: Bearer {{supervisorToken}}
 
 ### =====================================================
-### 4. BUSINESS TRAVEL ENDPOINTS
+### 5. BUSINESS TRAVEL MANAGEMENT ENDPOINTS
 ### =====================================================
 
-### @name submitBusinessTravel
+### @name submitBusinessTravelRequest
 POST {{baseUrl}}/api/business-travel/request
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "destination": "Bandung, West Java",
-  "description": "Client meeting and project coordination",
-  "startDate": "2025-12-15",
-  "endDate": "2025-12-17",
-  "estimatedCost": 2500000.00
+  "city": "Singapore",
+  "startDate": "2025-11-10",
+  "endDate": "2025-11-12",
+  "reason": "Client meeting and project discussion"
 }
 
 > {%
   if (response.status === 200) {
-    client.global.set("travelRequestId", response.body.data.id);
-    client.log("✅ Travel request submitted! ID: " + response.body.data.id);
+    client.global.set("businessTravelUuid", response.body.data.uuid);
+    client.log("✅ Business travel request submitted!");
+    client.log("UUID: " + response.body.data.uuid);
+    client.log("Total Days: " + response.body.data.totalDays);
+  } else {
+    client.log("❌ Business travel request submission failed: " + response.body.message);
   }
 %}
 
-### @name getMyTravelRequests
+### @name submitBusinessTravelShortTrip
+POST {{baseUrl}}/api/business-travel/request
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "city": "Bandung",
+  "startDate": "2025-11-20",
+  "endDate": "2025-11-20",
+  "reason": "One-day business meeting"
+}
+
+### @name submitBusinessTravelLongTrip
+POST {{baseUrl}}/api/business-travel/request
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "city": "Surabaya",
+  "startDate": "2025-12-01",
+  "endDate": "2025-12-05",
+  "reason": "Conference and networking"
+}
+
+### @name submitBusinessTravelWithInvalidDates
+POST {{baseUrl}}/api/business-travel/request
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "city": "Jakarta",
+  "startDate": "2025-12-15",
+  "endDate": "2025-12-10",
+  "reason": "Invalid date range"
+}
+
+### @name getMyBusinessTravelRequests
 GET {{baseUrl}}/api/business-travel/my-requests
 Authorization: Bearer {{token}}
 
-### @name approveTravelRequest
-POST {{baseUrl}}/api/business-travel/supervisor/approve/{{travelRequestId}}
-Authorization: Bearer {{adminToken}}
+### @name getMyBusinessTravelRequestsPaginated
+GET {{baseUrl}}/api/business-travel/my-requests?page=0&size=5
+Authorization: Bearer {{token}}
 
-### @name rejectTravelRequest
-POST {{baseUrl}}/api/business-travel/supervisor/reject/{{travelRequestId}}
-Authorization: Bearer {{adminToken}}
+### @name getBusinessTravelRequestByUuid
+GET {{baseUrl}}/api/business-travel/request/{{businessTravelUuid}}
+Authorization: Bearer {{token}}
+
+### @name getBusinessTravelRequestByUuidAsSupervisor
+GET {{baseUrl}}/api/business-travel/request/{{businessTravelUuid}}
+Authorization: Bearer {{supervisorToken}}
+
+### @name getNonExistentBusinessTravelRequestByUuid
+GET {{baseUrl}}/api/business-travel/request/550e8400-e29b-41d4-a716-446655449999
+Authorization: Bearer {{token}}
+
+### @name getCurrentBusinessTravel
+GET {{baseUrl}}/api/business-travel/current
+Authorization: Bearer {{token}}
+
+### @name getPendingBusinessTravelRequestsForSupervisor
+GET {{baseUrl}}/api/business-travel/supervisor/pending
+Authorization: Bearer {{supervisorToken}}
+
+### @name approveBusinessTravelRequest
+POST {{baseUrl}}/api/business-travel/supervisor/approve/{{businessTravelUuid}}
+Authorization: Bearer {{supervisorToken}}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ Business travel request approved!");
+    client.log("Status: " + response.body.data.status);
+  } else {
+    client.log("❌ Business travel approval failed: " + response.body.message);
+  }
+%}
+
+### @name rejectBusinessTravelRequest
+POST {{baseUrl}}/api/business-travel/supervisor/reject/{{businessTravelUuid}}
+Authorization: Bearer {{supervisorToken}}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ Business travel request rejected!");
+    client.log("Status: " + response.body.data.status);
+  } else {
+    client.log("❌ Business travel rejection failed: " + response.body.message);
+  }
+%}
+
+### @name approveBusinessTravelRequestAsEmployee
+POST {{baseUrl}}/api/business-travel/supervisor/approve/{{businessTravelUuid}}
+Authorization: Bearer {{token}}
 
 ### =====================================================
-### 5. HR ADMIN ENDPOINTS
+### 6. HR ADMIN ENDPOINTS (ADMIN/HR roles only)
 ### =====================================================
 
 ### @name registerNewEmployee
@@ -469,28 +583,66 @@ Content-Type: application/json
 Authorization: Bearer {{adminToken}}
 
 {
-  "firstName": "Citra",
-  "lastName": "Ningsih",
-  "email": "citra.ningsih@hris.com",
-  "password": "password123",
-  "phoneNumber": "081234567891",
-  "departmentId": 2,
-  "positionId": 3,
-  "supervisorId": 1,
-  "hireDate": "2025-10-02",
-  "annualLeaveBalance": 12,
-  "sickLeaveBalance": 10
+  "firstName": "John",
+  "lastName": "Doe",
+  "email": "john.doe@company.com",
+  "password": "TempPass123",
+  "employeeId": "EMP123",
+  "role": "EMPLOYEE",
+  "supervisorId": 2
 }
 
 > {%
   if (response.status === 200) {
     client.global.set("employeeId", response.body.data.id);
     client.log("✅ Employee registered! ID: " + response.body.data.id);
+  } else {
+    client.log("❌ Employee registration failed: " + response.body.message);
   }
 %}
 
+### @name registerSupervisor
+POST {{baseUrl}}/api/admin/register-employee
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "firstName": "Jane",
+  "lastName": "Smith",
+  "email": "jane.smith@company.com",
+  "password": "TempPass123",
+  "employeeId": "SUP123",
+  "role": "SUPERVISOR"
+}
+
+### @name registerEmployeeWithInvalidData
+POST {{baseUrl}}/api/admin/register-employee
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "firstName": "",
+  "lastName": "",
+  "email": "invalid-email",
+  "password": "123",
+  "employeeId": "",
+  "role": "INVALID_ROLE"
+}
+
 ### @name getAllEmployees
 GET {{baseUrl}}/api/admin/employees
+Authorization: Bearer {{adminToken}}
+
+### @name getAllEmployeesPaginated
+GET {{baseUrl}}/api/admin/employees?page=0&size=5
+Authorization: Bearer {{adminToken}}
+
+### @name searchEmployees
+GET {{baseUrl}}/api/admin/employees?search=john&role=EMPLOYEE&active=true
+Authorization: Bearer {{adminToken}}
+
+### @name getEmployeeById
+GET {{baseUrl}}/api/admin/employees/{{employeeId}}
 Authorization: Bearer {{adminToken}}
 
 ### @name updateEmployee
@@ -499,131 +651,263 @@ Content-Type: application/json
 Authorization: Bearer {{adminToken}}
 
 {
-  "phoneNumber": "081211112222",
-  "departmentId": 3,
-  "positionId": 4
+  "firstName": "John Updated",
+  "lastName": "Doe Updated",
+  "email": "john.doe.updated@company.com",
+  "role": "SUPERVISOR"
+}
+
+### @name updateEmployeeWithInvalidData
+PUT {{baseUrl}}/api/admin/employees/{{employeeId}}
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "firstName": "",
+  "email": "invalid-email",
+  "role": "INVALID_ROLE"
 }
 
 ### @name deactivateEmployee
 POST {{baseUrl}}/api/admin/employees/{{employeeId}}/deactivate
 Authorization: Bearer {{adminToken}}
 
+### @name updateFaceTemplate
+POST {{baseUrl}}/api/admin/employees/{{employeeId}}/face-template
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+Authorization: Bearer {{adminToken}}
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="faceImage"; filename="face.jpg"
+Content-Type: image/jpeg
+
+< ./face-template.jpg
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
 ### =====================================================
-### 6. DATA MIGRATION ENDPOINTS
+### 7. DATA MIGRATION ENDPOINTS (ADMIN role only)
 ### =====================================================
 
 ### @name initializeDefaultData
 POST {{baseUrl}}/api/migration/initialize
 Authorization: Bearer {{adminToken}}
 
+> {%
+  if (response.status === 200) {
+    client.log("✅ Default data initialized successfully!");
+    client.log("Roles created: " + response.body.data.rolesCreated);
+    client.log("Admin user created: " + response.body.data.adminUserCreated);
+  } else {
+    client.log("❌ Data initialization failed: " + response.body.message);
+  }
+%}
+
+### @name importEmployeesFromCSV
+POST {{baseUrl}}/api/migration/import-employees
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+Authorization: Bearer {{adminToken}}
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="employees.csv"
+Content-Type: text/csv
+
+firstName,lastName,email,employeeId,role,supervisorId
+John,Doe,john.doe@company.com,EMP004,EMPLOYEE,2
+Jane,Smith,jane.smith@company.com,EMP005,EMPLOYEE,2
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
 ### @name getCSVTemplate
 GET {{baseUrl}}/api/migration/csv-template
 Authorization: Bearer {{adminToken}}
 
 ### =====================================================
-### 7. ERROR HANDLING TESTS
+### 8. SYSTEM HEALTH & MONITORING ENDPOINTS
+### =====================================================
+
+### @name testEmailService
+GET {{baseUrl}}/api/test/email?to=test@example.com
+Authorization: Bearer {{adminToken}}
+
+### @name getApplicationHealth
+GET {{baseUrl}}/actuator/health
+
+### @name getApplicationInfo
+GET {{baseUrl}}/actuator/info
+
+### =====================================================
+### 9. DEVELOPMENT & DEBUGGING ENDPOINTS
+### =====================================================
+
+### @name generatePasswordHash
+GET {{baseUrl}}/api/auth/debug/hash?password=testpassword123
+Authorization: Bearer {{adminToken}}
+
+### @name verifyPassword
+POST {{baseUrl}}/api/auth/debug/verify
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "password": "testpassword123",
+  "hashedPassword": "$2a$10$..."
+}
+
+### =====================================================
+### 10. ERROR HANDLING & SECURITY TESTS
 ### =====================================================
 
 ### @name unauthorizedAccess
-GET {{baseUrl}}/api/attendance/history
+GET {{baseUrl}}/api/admin/employees
 
 ### @name invalidToken
 GET {{baseUrl}}/api/attendance/history
 Authorization: Bearer invalid-token-here
 
+### @name expiredToken
+GET {{baseUrl}}/api/attendance/history
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJleHBpcmVkIiwiaWF0IjoxNjAwMDAwMDAwLCJleHAiOjE2MDAwMDAwMDF9.invalid
+
 ### @name forbiddenAccess
 GET {{baseUrl}}/api/admin/employees
 Authorization: Bearer {{token}}
 
+### @name rateLimitingTestLogin
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@hris.com",
+  "password": "wrongpassword"
+}
+
+### @name rateLimitingTestPasswordReset
+POST {{baseUrl}}/api/auth/password-reset/forgot
+Content-Type: application/json
+
+{
+  "email": "test@hris.com"
+}
+
 ### =====================================================
-### 8. UTILITY ENDPOINTS
+### 11. AUTHORIZATION TESTS
 ### =====================================================
 
-### @name generatePasswordHash
-GET {{baseUrl}}/api/auth/debug/hash?password=newpassword123
+### @name employeeAccessAdminEndpoint
+GET {{baseUrl}}/api/admin/employees
+Authorization: Bearer {{token}}
+
+### @name supervisorAccessAdminEndpoint
+GET {{baseUrl}}/api/admin/employees
+Authorization: Bearer {{supervisorToken}}
+
+### @name employeeAccessSupervisorEndpoint
+GET {{baseUrl}}/api/leave/supervisor/pending
+Authorization: Bearer {{token}}
+
+### @name adminAccessAllEndpoints
+GET {{baseUrl}}/api/leave/supervisor/pending
 Authorization: Bearer {{adminToken}}
 
 ### =====================================================
-### TESTING INSTRUCTIONS
+### 12. VALIDATION TESTS
 ### =====================================================
 
-# 1. SETUP:
-#    - Start the application: ./mvnw spring-boot:run -Dspring-boot.run.jvmArguments="-Dserver.port=8083"
-#    - Ensure database is running: docker-compose up -d
-#    - Initialize default data: Run the "initializeDefaultData" request
-#    - Application will be available at http://localhost:8083
+### @name submitLeaveRequestWithEmptyFields
+POST {{baseUrl}}/api/leave/request
+Content-Type: application/json
+Authorization: Bearer {{token}}
 
-# 2. AUTHENTICATION:
-#    - Run "loginEmployee" to get employee token
-#    - Run "loginAdmin" to get admin token
-#    - Tokens are automatically stored in variables
+{
+  "leaveType": "",
+  "startDate": "",
+  "endDate": "",
+  "reason": ""
+}
 
-# 3. WORKFLOW TESTING:
-#    - Employee Flow: Clock In → Clock Out → Check History → Get Attendance by ID
-#    - Leave Flow: Submit Leave → Get Leave by ID → Supervisor Approve/Reject
-#    - Travel Flow: Submit Travel → Supervisor Approve/Reject
-#    - Admin Flow: Register Employee → Manage Records
-#    - Password Reset Flow: Request Reset → Receive Email → Reset Password → Login with New Password
+### @name submitBusinessTravelWithEmptyFields
+POST {{baseUrl}}/api/business-travel/request
+Content-Type: application/json
+Authorization: Bearer {{token}}
 
-# 4. PAGING TESTING:
-#    - Leave Requests Paging: getMyLeaveRequestsPage1 → getMyLeaveRequestsPage2 → getMyLeaveRequestsPageSize3
-#    - Attendance History Paging: getAttendanceHistoryPaginated
-#    - Parameters: page (0-based), size (items per page), days (filter by last N days)
-#    - Example: GET /api/leave/my-requests?page=0&size=5&days=30
+{
+  "city": "",
+  "startDate": "",
+  "endDate": "",
+  "reason": ""
+}
 
-# 5. ATTENDANCE BY UUID TESTING:
-#    - Get own attendance record: getAttendanceByUuid (using employee token)
-#    - Get attendance as supervisor: getAttendanceByUuidAsSupervisor (using admin token)
-#    - Test error handling: getNonExistentAttendanceByUuid
-#    - SECURITY: Uses 128-bit UUIDs instead of predictable numeric IDs
-#    - Access Control: Employees can only view their own records, supervisors can view all
+### @name clockInWithInvalidCoordinates
+POST {{baseUrl}}/api/attendance/clock-in
+Content-Type: application/json
+Authorization: Bearer {{token}}
 
-# 6. SECURITY FEATURES:
-#    - UUID IMPLEMENTATION: API endpoints use 128-bit UUIDs instead of predictable numeric IDs
-#    - IDOR PREVENTION: Prevents Insecure Direct Object Reference attacks
-#    - ACCESS CONTROL: Role-based authorization with proper permission checks
-#    - NO INFORMATION LEAKAGE: 404 errors for non-existent UUIDs, not 403
-#    - PASSWORD RESET SECURITY: Email enumeration protection, token expiration, rate limiting
-#    - Examples: /api/attendance/550e8400-e29b-41d4-a716-446655440000
-
-# 7. RESPONSE FORMAT:
-#    - Success: {"data": {...}, "message": "..."}
-#    - Error: {"data": null, "message": "Error description"}
-#    - HTTP Status Codes indicate success/failure
-#    - Paginated Response: {"data": [...], "size": perPage, "total": totalItems, "totalPages": N, "currentPage": N}
-#    - Password Reset Response: {"message": "...", "expiresIn": "...", "success": true/false}
-
-# 8. PASSWORD RESET TESTING WORKFLOW:
-#    1. Request Password Reset: requestPasswordReset (send email)
-#    2. Check Email for Reset Link (manual step - check Gmail)
-#    3. Extract Token from Email URL or use resetPasswordRequestTest for specific user
-#    4. Verify Token: verifyResetToken (optional validation step)
-#    5. Reset Password: resetPasswordWithValidToken (update password)
-#    6. Test Login: Login with new password to verify success
-#
-#    SECURITY TESTS:
-#    - Email Enumeration: requestPasswordResetInvalidEmail (should return success)
-#    - Input Validation: requestPasswordResetInvalidFormat (should return 400)
-#    - Token Validation: verifyResetToken with invalid token (should return false)
-#    - Password Strength: resetPasswordWithWeakPassword (should return 400)
-#    - Password Mismatch: resetPasswordWithMismatch (should return 400)
-#    - Invalid Token: resetPasswordWithInvalidToken (should return 400)
-#    - Rate Limiting: Multiple rapid requests (should be limited to 3/hour)
-
-# 9. PASSWORD REQUIREMENTS:
-#    - Minimum 12 characters
-#    - Must contain: Uppercase letter, lowercase letter, number, special character
-#    - Cannot reuse last 5 passwords
-#    - Rate limiting: 3 requests per hour per email
-#    - Token expiration: 1 hour
-#    - Single use: Tokens become invalid after successful reset
-
-# 10. EMAIL CONFIGURATION:
-#     - SMTP: Gmail (smtp.gmail.com:587)
-#     - Email: smtp.dihardmg@gmail.com
-#     - Check spam folder if email not received
-#     - Reset links valid for: http://localhost:3000/reset-password?token=TOKEN
+{
+  "latitude": "invalid",
+  "longitude": "invalid",
+  "faceImage": "",
+  "notes": ""
+}
 
 ### =====================================================
-### END OF API TESTING SUITE
+### TESTING INSTRUCTIONS & WORKFLOWS
+### =====================================================
+
+# --- QUICK START ---
+# 1. Start the application: mvn spring-boot:run -Dspring-boot.run.profiles=dev
+# 2. Initialize data: Run "initializeDefaultData" request
+# 3. Login: Run "loginAdmin", "loginSupervisor", and "loginEmployee" requests
+# 4. Update tokens: Copy tokens from responses to @token, @adminToken, @supervisorToken variables
+# 5. Test workflows: Follow the numbered testing sequences below
+
+# --- WORKFLOW 1: COMPLETE EMPLOYEE DAILY WORKFLOW ---
+# 1. loginEmployee → clockIn → getTodayAttendance → clockOut → getAttendanceHistory
+# 2. submitAnnualLeave → getMyLeaveRequests → getCurrentLeave
+# 3. submitBusinessTravelRequest → getMyBusinessTravelRequests → getCurrentBusinessTravel
+
+# --- WORKFLOW 2: SUPERVISOR APPROVAL WORKFLOW ---
+# 1. loginSupervisor → getPendingLeaveRequests → approveLeaveRequest
+# 2. getPendingBusinessTravelRequests → approveBusinessTravelRequest
+# 3. Test rejection workflow with rejectLeaveRequest and rejectBusinessTravelRequest
+
+# --- WORKFLOW 3: HR ADMIN MANAGEMENT WORKFLOW ---
+# 1. loginAdmin → registerNewEmployee → getAllEmployees → updateEmployee
+# 2. getEmployeeById → deactivateEmployee → updateFaceTemplate
+# 3. Test pagination and search functionality
+
+# --- WORKFLOW 4: PASSWORD RESET WORKFLOW ---
+# 1. requestPasswordReset → checkEmail → verifyResetToken → resetPasswordWithValidToken
+# 2. Test with new password: loginEmployee
+# 3. Test security: requestPasswordResetInvalidEmail, resetPasswordWithWeakPassword
+
+# --- WORKFLOW 5: SECURITY & ERROR HANDLING ---
+# 1. Test unauthorized access: employeeAccessAdminEndpoint
+# 2. Test invalid tokens: invalidToken, expiredToken
+# 3. Test validation: submitLeaveRequestWithEmptyFields
+# 4. Test business rules: clockInTwice, submitLeaveWithInvalidDates
+
+# --- TESTING BEST PRACTICES ---
+# 1. Always update tokens after successful login
+# 2. Update UUID variables after creating resources
+# 3. Test both success and failure scenarios
+# 4. Verify response formats and status codes
+# 5. Check console logs for debugging information
+# 6. Test role-based access control thoroughly
+# 7. Validate input handling and error messages
+# 8. Test pagination and filtering parameters
+
+# --- RESPONSE FORMAT EXPECTATIONS ---
+# Success: {"success": true, "message": "...", "data": {...}}
+# Error: {"success": false, "message": "...", "error": "ERROR_TYPE"}
+# Paginated: {"success": true, "data": {"content": [...], "totalElements": N, "totalPages": N, "currentPage": N}}
+# UUID-based lookup: All record retrieval uses UUID instead of numeric IDs for security
+
+# --- SECURITY NOTES ---
+# - UUIDs prevent IDOR attacks (Insecure Direct Object Reference)
+# - Role-based access control enforced on all endpoints
+# - Password reset includes email enumeration protection
+# - Rate limiting prevents brute force attacks
+# - All sensitive endpoints require proper authentication
+
+### =====================================================
+### END OF COMPREHENSIVE API TESTING SUITE
 ### =====================================================

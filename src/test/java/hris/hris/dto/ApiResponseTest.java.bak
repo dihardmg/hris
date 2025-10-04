@@ -1,0 +1,427 @@
+package hris.hris.dto;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+@DisplayName("ApiResponse Tests")
+class ApiResponseTest {
+
+    private ApiResponse<String> apiResponse;
+
+    @BeforeEach
+    void setUp() {
+        apiResponse = new ApiResponse<>();
+    }
+
+    @Nested
+    @DisplayName("Constructor Tests")
+    class ConstructorTests {
+
+        @Test
+        @DisplayName("Should create default constructor")
+        void shouldCreateDefaultConstructor() {
+            ApiResponse<String> response = new ApiResponse<>();
+
+            assertNull(response.getData(), "Data should be null");
+            assertNull(response.getMessage(), "Message should be null");
+        }
+
+        @Test
+        @DisplayName("Should create all args constructor")
+        void shouldCreateAllArgsConstructor() {
+            String testData = "test data";
+            String testMessage = "test message";
+
+            ApiResponse<String> response = new ApiResponse<>(testData, testMessage);
+
+            assertEquals(testData, response.getData(), "Data should match");
+            assertEquals(testMessage, response.getMessage(), "Message should match");
+        }
+    }
+
+    @Nested
+    @DisplayName("Getter and Setter Tests")
+    class GetterSetterTests {
+
+        @Test
+        @DisplayName("Should set and get data correctly")
+        void shouldSetAndGetData() {
+            String testData = "test data";
+
+            apiResponse.setData(testData);
+
+            assertEquals(testData, apiResponse.getData(), "Data should be set and retrieved correctly");
+        }
+
+        @Test
+        @DisplayName("Should set and get message correctly")
+        void shouldSetAndGetMessage() {
+            String testMessage = "test message";
+
+            apiResponse.setMessage(testMessage);
+
+            assertEquals(testMessage, apiResponse.getMessage(), "Message should be set and retrieved correctly");
+        }
+
+        @Test
+        @DisplayName("Should handle null data")
+        void shouldHandleNullData() {
+            apiResponse.setData(null);
+
+            assertNull(apiResponse.getData(), "Data should be able to be null");
+        }
+
+        @Test
+        @DisplayName("Should handle null message")
+        void shouldHandleNullMessage() {
+            apiResponse.setMessage(null);
+
+            assertNull(apiResponse.getMessage(), "Message should be able to be null");
+        }
+
+        @Test
+        @DisplayName("Should handle empty string data")
+        void shouldHandleEmptyStringData() {
+            apiResponse.setData("");
+
+            assertEquals("", apiResponse.getData(), "Data should handle empty string");
+        }
+
+        @Test
+        @DisplayName("Should handle empty string message")
+        void shouldHandleEmptyStringMessage() {
+            apiResponse.setMessage("");
+
+            assertEquals("", apiResponse.getMessage(), "Message should handle empty string");
+        }
+    }
+
+    @Nested
+    @DisplayName("Static Success Method Tests")
+    class StaticSuccessMethodTests {
+
+        @Test
+        @DisplayName("Should create success response with data only")
+        void shouldCreateSuccessResponseWithDataOnly() {
+            String testData = "test data";
+
+            ApiResponse<String> response = ApiResponse.success(testData);
+
+            assertNotNull(response, "Response should not be null");
+            assertEquals(testData, response.getData(), "Data should match");
+            assertNull(response.getMessage(), "Message should be null");
+        }
+
+        @Test
+        @DisplayName("Should create success response with data and message")
+        void shouldCreateSuccessResponseWithDataAndMessage() {
+            String testData = "test data";
+            String testMessage = "success message";
+
+            ApiResponse<String> response = ApiResponse.success(testData, testMessage);
+
+            assertNotNull(response, "Response should not be null");
+            assertEquals(testData, response.getData(), "Data should match");
+            assertEquals(testMessage, response.getMessage(), "Message should match");
+        }
+
+        @Test
+        @DisplayName("Should create success response with message only")
+        void shouldCreateSuccessResponseWithMessageOnly() {
+            String testMessage = "success message";
+
+            ApiResponse<Void> response = ApiResponse.success(testMessage);
+
+            assertNotNull(response, "Response should not be null");
+            assertNull(response.getData(), "Data should be null for Void response");
+            assertEquals(testMessage, response.getMessage(), "Message should match");
+        }
+
+        @Test
+        @DisplayName("Should handle null data in success method")
+        void shouldHandleNullDataInSuccessMethod() {
+            ApiResponse<String> response = ApiResponse.success((String) null);
+
+            assertNotNull(response, "Response should not be null");
+            assertNull(response.getData(), "Data should be null");
+            assertNull(response.getMessage(), "Message should be null");
+        }
+
+        @Test
+        @DisplayName("Should handle null message in success method with data")
+        void shouldHandleNullMessageInSuccessMethodWithData() {
+            String testData = "test data";
+
+            ApiResponse<String> response = ApiResponse.success(testData, null);
+
+            assertNotNull(response, "Response should not be null");
+            assertEquals(testData, response.getData(), "Data should match");
+            assertNull(response.getMessage(), "Message should be null");
+        }
+
+        @Test
+        @DisplayName("Should handle complex object data in success method")
+        void shouldHandleComplexObjectDataInSuccessMethod() {
+            EmployeeDto employeeDto = new EmployeeDto();
+            employeeDto.setId(1L);
+            employeeDto.setEmployeeCode("EMP001");
+            employeeDto.setFirstName("John");
+            employeeDto.setLastName("Doe");
+            employeeDto.setEmail("john.doe@example.com");
+
+            ApiResponse<EmployeeDto> response = ApiResponse.success(employeeDto);
+
+            assertNotNull(response, "Response should not be null");
+            assertEquals(employeeDto, response.getData(), "Complex object data should match");
+            assertNull(response.getMessage(), "Message should be null");
+        }
+
+        @Test
+        @DisplayName("Should handle empty string message in success method")
+        void shouldHandleEmptyStringMessageInSuccessMethod() {
+            ApiResponse<Void> response = ApiResponse.success("");
+
+            assertNotNull(response, "Response should not be null");
+            assertEquals("", response.getMessage(), "Message should handle empty string");
+        }
+    }
+
+    @Nested
+    @DisplayName("Static Error Method Tests")
+    class StaticErrorMethodTests {
+
+        @Test
+        @DisplayName("Should create error response with message")
+        void shouldCreateErrorResponseWithMessage() {
+            String errorMessage = "error message";
+
+            ApiResponse<String> response = ApiResponse.<String>error(errorMessage);
+
+            assertNotNull(response, "Response should not be null");
+            assertNull(response.getData(), "Data should be null for error response");
+            assertEquals(errorMessage, response.getMessage(), "Message should match");
+        }
+
+        @Test
+        @DisplayName("Should handle null message in error method")
+        void shouldHandleNullMessageInErrorMethod() {
+            ApiResponse<String> response = ApiResponse.<String>error(null);
+
+            assertNotNull(response, "Response should not be null");
+            assertNull(response.getData(), "Data should be null");
+            assertNull(response.getMessage(), "Message should be null");
+        }
+
+        @Test
+        @DisplayName("Should handle empty string message in error method")
+        void shouldHandleEmptyStringMessageInErrorMethod() {
+            ApiResponse<String> response = ApiResponse.<String>error("");
+
+            assertNotNull(response, "Response should not be null");
+            assertNull(response.getData(), "Data should be null");
+            assertEquals("", response.getMessage(), "Message should handle empty string");
+        }
+
+        @Test
+        @DisplayName("Should create error response with RateLimitResponse")
+        void shouldCreateErrorResponseWithRateLimitResponse() {
+            RateLimitResponse rateLimitResponse = new RateLimitResponse();
+            rateLimitResponse.setMessage("Rate limit exceeded");
+            rateLimitResponse.setRemainingAttempts(0);
+            rateLimitResponse.setRetryAfterMinutes(5L);
+
+            ApiResponse<RateLimitResponse> response = ApiResponse.error(rateLimitResponse);
+
+            assertNotNull(response, "Response should not be null");
+            assertEquals(rateLimitResponse, response.getData(), "Rate limit response data should match");
+            assertEquals(rateLimitResponse.getMessage(), response.getMessage(), "Message should match rate limit response message");
+        }
+
+        @Test
+        @DisplayName("Should handle null RateLimitResponse in error method")
+        void shouldHandleNullRateLimitResponseInErrorMethod() {
+            ApiResponse<RateLimitResponse> response = ApiResponse.error((RateLimitResponse) null);
+
+            assertNotNull(response, "Response should not be null");
+            assertNull(response.getData(), "Data should be null");
+            assertNull(response.getMessage(), "Message should be null");
+        }
+    }
+
+    @Nested
+    @DisplayName("Generic Type Tests")
+    class GenericTypeTests {
+
+        @Test
+        @DisplayName("Should work with Integer type")
+        void shouldWorkWithIntegerType() {
+            Integer testData = 123;
+
+            ApiResponse<Integer> response = ApiResponse.success(testData);
+
+            assertEquals(testData, response.getData(), "Integer data should work correctly");
+        }
+
+        @Test
+        @DisplayName("Should work with Boolean type")
+        void shouldWorkWithBooleanType() {
+            Boolean testData = true;
+
+            ApiResponse<Boolean> response = ApiResponse.success(testData);
+
+            assertEquals(testData, response.getData(), "Boolean data should work correctly");
+        }
+
+        @Test
+        @DisplayName("Should work with custom object type")
+        void shouldWorkWithCustomObjectType() {
+            BusinessTravelRequestResponseDto dto = new BusinessTravelRequestResponseDto();
+            dto.setCity("Jakarta");
+            dto.setStatus("APPROVED");
+
+            ApiResponse<BusinessTravelRequestResponseDto> response = ApiResponse.success(dto, "Travel request retrieved");
+
+            assertEquals(dto, response.getData(), "Custom object data should work correctly");
+            assertEquals("Travel request retrieved", response.getMessage(), "Message should be set correctly");
+        }
+
+        @Test
+        @DisplayName("Should work with List type")
+        void shouldWorkWithListType() {
+            java.util.List<String> testData = java.util.List.of("item1", "item2", "item3");
+
+            ApiResponse<java.util.List<String>> response = ApiResponse.success(testData, "List retrieved successfully");
+
+            assertEquals(testData, response.getData(), "List data should work correctly");
+            assertEquals("List retrieved successfully", response.getMessage(), "Message should be set correctly");
+        }
+    }
+
+    @Nested
+    @DisplayName("Lombok Annotation Tests")
+    class LombokAnnotationTests {
+
+        @Test
+        @DisplayName("Should have working toString method")
+        void shouldHaveWorkingToString() {
+            // Given
+            apiResponse.setData("test data");
+            apiResponse.setMessage("test message");
+
+            // When
+            String toString = apiResponse.toString();
+
+            // Then
+            assertNotNull(toString, "toString should not be null");
+            assertTrue(toString.contains("ApiResponse"), "toString should contain class name");
+            assertTrue(toString.contains("test data"), "toString should contain data");
+            assertTrue(toString.contains("test message"), "toString should contain message");
+        }
+
+        @Test
+        @DisplayName("Should have working equals method")
+        void shouldHaveWorkingEquals() {
+            // Given
+            ApiResponse<String> response1 = new ApiResponse<>("data1", "message1");
+            ApiResponse<String> response2 = new ApiResponse<>("data1", "message1");
+            ApiResponse<String> response3 = new ApiResponse<>("data2", "message2");
+
+            // Then
+            assertEquals(response1, response2, "Responses with same data and message should be equal");
+            assertEquals(response1, response1, "Response should be equal to itself");
+            assertNotEquals(null, response1, "Response should not be equal to null");
+            assertNotEquals(response1, new Object(), "Response should not be equal to different type");
+            assertNotEquals(response1, response3, "Responses with different data should not be equal");
+        }
+
+        @Test
+        @DisplayName("Should have working hashCode method")
+        void shouldHaveWorkingHashCode() {
+            // Given
+            ApiResponse<String> response1 = new ApiResponse<>("data1", "message1");
+            ApiResponse<String> response2 = new ApiResponse<>("data1", "message1");
+
+            // Then
+            assertEquals(response1.hashCode(), response2.hashCode(), "Equal responses should have same hashCode");
+        }
+
+        @Test
+        @DisplayName("Different objects should have different hashCodes")
+        void differentObjectsShouldHaveDifferentHashCodes() {
+            // Given
+            ApiResponse<String> response1 = new ApiResponse<>("data1", "message1");
+            ApiResponse<String> response2 = new ApiResponse<>("data2", "message2");
+
+            // Then
+            assertNotEquals(response1.hashCode(), response2.hashCode(), "Different responses should have different hashCodes");
+        }
+    }
+
+    @Nested
+    @DisplayName("Edge Case Tests")
+    class EdgeCaseTests {
+
+        @Test
+        @DisplayName("Should handle very long message")
+        void shouldHandleVeryLongMessage() {
+            String longMessage = "This is a very long message that exceeds normal length expectations ".repeat(10);
+
+            apiResponse.setMessage(longMessage);
+
+            assertEquals(longMessage, apiResponse.getMessage(), "Should handle very long message");
+        }
+
+        @Test
+        @DisplayName("Should handle special characters in message")
+        void shouldHandleSpecialCharactersInMessage() {
+            String specialMessage = "Special chars: !@#$%^&*()_+-={}[]|\\:;\"'<>?,./";
+
+            apiResponse.setMessage(specialMessage);
+
+            assertEquals(specialMessage, apiResponse.getMessage(), "Should handle special characters");
+        }
+
+        @Test
+        @DisplayName("Should handle Unicode characters in message")
+        void shouldHandleUnicodeCharactersInMessage() {
+            String unicodeMessage = "Unicode: 你好 こんにちは 안녕하세요 مرحبًا";
+
+            apiResponse.setMessage(unicodeMessage);
+
+            assertEquals(unicodeMessage, apiResponse.getMessage(), "Should handle Unicode characters");
+        }
+
+        @Test
+        @DisplayName("Should handle zero and negative numbers as data")
+        void shouldHandleZeroAndNegativeNumbersAsData() {
+            ApiResponse<Integer> zeroResponse = ApiResponse.success(0);
+            ApiResponse<Integer> negativeResponse = ApiResponse.success(-1);
+
+            assertEquals(0, zeroResponse.getData(), "Should handle zero");
+            assertEquals(-1, negativeResponse.getData(), "Should handle negative numbers");
+        }
+    }
+
+    @Nested
+    @DisplayName("Fluent API Tests")
+    class FluentApiTests {
+
+        @Test
+        @DisplayName("Should support method chaining")
+        void shouldSupportMethodChaining() {
+            String testData = "test data";
+            String testMessage = "test message";
+
+            ApiResponse<String> response = new ApiResponse<String>()
+                .setData(testData)
+                .setMessage(testMessage);
+
+            assertEquals(testData, response.getData(), "Chained data setting should work");
+            assertEquals(testMessage, response.getMessage(), "Chained message setting should work");
+        }
+    }
+}
