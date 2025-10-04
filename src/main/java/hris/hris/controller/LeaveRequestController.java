@@ -169,7 +169,10 @@ public class LeaveRequestController {
         int remainingBalance = leaveRequestService.getAvailableLeaveBalance(employee, leaveRequest.getLeaveType());
         LeaveRequestResponseDto responseDto = LeaveRequestResponseDto.fromLeaveRequest(leaveRequest, remainingBalance);
 
-        return ResponseEntity.ok(ApiResponse.success(responseDto, "Leave request retrieved successfully"));
+        return ResponseEntity.ok(Map.of(
+            "data", responseDto,
+            "message", "Leave record retrieved successfully"
+        ));
     }
 
     @GetMapping("/current")

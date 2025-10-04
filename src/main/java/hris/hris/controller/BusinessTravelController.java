@@ -1,18 +1,24 @@
 package hris.hris.controller;
 
 import hris.hris.dto.BusinessTravelRequestDto;
+import hris.hris.dto.BusinessTravelRequestResponseDto;
+import hris.hris.dto.PaginatedBusinessTravelRequestResponse;
 import hris.hris.model.BusinessTravelRequest;
 import hris.hris.security.JwtUtil;
 import hris.hris.service.BusinessTravelRequestService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/business-travel")
@@ -37,7 +43,7 @@ public class BusinessTravelController {
 
             return ResponseEntity.ok(Map.of(
                 "message", "Business travel request submitted successfully",
-                "travelRequest", travelRequest
+                "data", BusinessTravelRequestResponseDto.fromBusinessTravelRequest(travelRequest)
             ));
 
         } catch (Exception e) {
@@ -50,18 +56,71 @@ public class BusinessTravelController {
 
     @GetMapping("/my-requests")
     @PreAuthorize("hasRole('EMPLOYEE')")
-    public ResponseEntity<?> getMyBusinessTravelRequests(@RequestHeader("Authorization") String token) {
+    public ResponseEntity<PaginatedBusinessTravelRequestResponse> getMyBusinessTravelRequests(
+            @RequestHeader("Authorization") String token,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
         try {
             Long employeeId = jwtUtil.getEmployeeIdFromToken(token.substring(7));
 
-            List<BusinessTravelRequest> requests = businessTravelRequestService.getEmployeeBusinessTravelRequests(employeeId);
+            // Create pageable request
+            Pageable pageable = PageRequest.of(page, size);
+            Page<BusinessTravelRequest> requestsPage = businessTravelRequestService.getEmployeeBusinessTravelRequests(employeeId, pageable);
 
-            return ResponseEntity.ok(requests);
+            // Convert to DTOs to avoid lazy loading issues
+            List<BusinessTravelRequestResponseDto> requestDtos = requestsPage.getContent().stream()
+                .map(BusinessTravelRequestResponseDto::fromBusinessTravelRequest)
+                .toList();
+
+            // Create paginated response with real pagination data
+            PaginatedBusinessTravelRequestResponse response = PaginatedBusinessTravelRequestResponse.createResponse(
+                requestDtos,
+                requestsPage.getSize(),         // size per page
+                (int) requestsPage.getTotalElements(), // total elements
+                requestsPage.getTotalPages(),    // total pages
+                requestsPage.getNumber() + 1     // current page (convert from 0-based to 1-based)
+            );
+
+            return ResponseEntity.ok(response);
 
         } catch (Exception e) {
             log.error("Get business travel requests failed", e);
+            // Return empty paginated response for error case
+            PaginatedBusinessTravelRequestResponse errorResponse = PaginatedBusinessTravelRequestResponse.createResponse(
+                List.of(),      // empty data
+                0,              // size
+                0,              // total
+                0,              // totalPages
+                0               // currentPage
+            );
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    @GetMapping("/request/{uuid}")
+    @PreAuthorize("hasRole('EMPLOYEE') or hasRole('SUPERVISOR') or hasRole('HR') or hasRole('ADMIN')")
+    public ResponseEntity<?> getBusinessTravelRequestByUuid(@RequestHeader("Authorization") String token,
+                                                         @PathVariable UUID uuid) {
+        try {
+            Long employeeId = jwtUtil.getEmployeeIdFromToken(token.substring(7));
+
+            var travelRequestOptional = businessTravelRequestService.getBusinessTravelRequestByUuid(uuid);
+            if (travelRequestOptional.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Business travel request not found"));
+            }
+
+            BusinessTravelRequest travelRequest = travelRequestOptional.get();
+            BusinessTravelRequestResponseDto responseDto = BusinessTravelRequestResponseDto.fromBusinessTravelRequest(travelRequest);
+
+            return ResponseEntity.ok(Map.of(
+                "data", responseDto,
+                "message", "Travel record retrieved successfully"
+            ));
+
+        } catch (Exception e) {
+            log.error("Get business travel request by UUID failed", e);
             return ResponseEntity.badRequest().body(
-                Map.of("message", "Failed to get business travel requests")
+                Map.of("message", "Failed to get business travel request")
             );
         }
     }
@@ -75,7 +134,10 @@ public class BusinessTravelController {
             List<BusinessTravelRequest> currentTravel = businessTravelRequestService.getCurrentTravel(employeeId);
 
             if (!currentTravel.isEmpty()) {
-                return ResponseEntity.ok(currentTravel);
+                List<BusinessTravelRequestResponseDto> currentTravelDtos = currentTravel.stream()
+                    .map(BusinessTravelRequestResponseDto::fromBusinessTravelRequest)
+                    .toList();
+                return ResponseEntity.ok(currentTravelDtos);
             } else {
                 return ResponseEntity.ok(Map.of("message", "No current business travel found"));
             }
@@ -95,8 +157,11 @@ public class BusinessTravelController {
             Long supervisorId = jwtUtil.getEmployeeIdFromToken(token.substring(7));
 
             List<BusinessTravelRequest> pendingRequests = businessTravelRequestService.getPendingRequestsForSupervisor(supervisorId);
+            List<BusinessTravelRequestResponseDto> pendingRequestDtos = pendingRequests.stream()
+                .map(BusinessTravelRequestResponseDto::fromBusinessTravelRequest)
+                .toList();
 
-            return ResponseEntity.ok(pendingRequests);
+            return ResponseEntity.ok(pendingRequestDtos);
 
         } catch (Exception e) {
             log.error("Get pending business travel requests failed", e);
@@ -106,20 +171,19 @@ public class BusinessTravelController {
         }
     }
 
-    @PostMapping("/supervisor/approve/{requestId}")
+    @PostMapping("/supervisor/approve/{uuid}")
     @PreAuthorize("hasRole('SUPERVISOR')")
     public ResponseEntity<?> approveBusinessTravelRequest(@RequestHeader("Authorization") String token,
-                                                        @PathVariable Long requestId,
-                                                        @RequestBody Map<String, String> requestBody) {
+                                                        @PathVariable UUID uuid,
+                                                        @RequestBody(required = false) Map<String, String> requestBody) {
         try {
             Long supervisorId = jwtUtil.getEmployeeIdFromToken(token.substring(7));
-            String notes = requestBody.getOrDefault("notes", "");
 
-            BusinessTravelRequest approvedRequest = businessTravelRequestService.approveBusinessTravelRequest(requestId, supervisorId, notes);
+            BusinessTravelRequest approvedRequest = businessTravelRequestService.approveBusinessTravelRequest(uuid, supervisorId, null);
 
             return ResponseEntity.ok(Map.of(
                 "message", "Business travel request approved successfully",
-                "travelRequest", approvedRequest
+                "data", BusinessTravelRequestResponseDto.fromBusinessTravelRequest(approvedRequest)
             ));
 
         } catch (Exception e) {
@@ -130,26 +194,19 @@ public class BusinessTravelController {
         }
     }
 
-    @PostMapping("/supervisor/reject/{requestId}")
+    @PostMapping("/supervisor/reject/{uuid}")
     @PreAuthorize("hasRole('SUPERVISOR')")
     public ResponseEntity<?> rejectBusinessTravelRequest(@RequestHeader("Authorization") String token,
-                                                         @PathVariable Long requestId,
-                                                         @RequestBody Map<String, String> requestBody) {
+                                                         @PathVariable UUID uuid,
+                                                         @RequestBody(required = false) Map<String, String> requestBody) {
         try {
             Long supervisorId = jwtUtil.getEmployeeIdFromToken(token.substring(7));
-            String rejectionReason = requestBody.get("rejectionReason");
 
-            if (rejectionReason == null || rejectionReason.trim().isEmpty()) {
-                return ResponseEntity.badRequest().body(
-                    Map.of("message", "Rejection reason is required")
-                );
-            }
-
-            BusinessTravelRequest rejectedRequest = businessTravelRequestService.rejectBusinessTravelRequest(requestId, supervisorId, rejectionReason);
+            BusinessTravelRequest rejectedRequest = businessTravelRequestService.rejectBusinessTravelRequest(uuid, supervisorId, null);
 
             return ResponseEntity.ok(Map.of(
                 "message", "Business travel request rejected successfully",
-                "travelRequest", rejectedRequest
+                "data", BusinessTravelRequestResponseDto.fromBusinessTravelRequest(rejectedRequest)
             ));
 
         } catch (Exception e) {
