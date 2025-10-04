@@ -19,11 +19,35 @@ This system provides a complete HR management solution with the following key fe
 
 ## 🚀 Getting Started
 
-1. **Clone**: `git clone <repository-url>`
-2. **Database**: Use Docker Compose or local PostgreSQL
-3. **Run**: `mvn clean spring-boot:run`
-4. **Initialize**: `POST /api/migration/initialize` with admin token
-5. **Login**: Use admin@hris.com / admin123
+### Quick Start (Recommended)
+```bash
+# 1. Clone repository
+git clone <repository-url>
+cd hris
+
+# 2. Setup development environment (secure setup)
+./scripts/setup-dev.sh
+
+# 3. Run application
+ set -a && source .env && set +a && mvn clean spring-boot:run -Dspring-boot.run.profiles=dev
+
+# 4. Initialize default data
+curl -X POST http://localhost:8081/api/migration/initialize \
+  -H "Authorization: Bearer <admin-token>" \
+  -H "Content-Type: application/json"
+
+# 5. Login with admin credentials
+# Email: admin@hris.com, Password: admin123
+```
+
+### 🔒 Security First Setup
+For secure environment configuration, see **[Environment Setup Guide](docs/ENVIRONMENT_SETUP.md)**
+
+**Important Security Notes:**
+- ⚠️ Never commit sensitive data to version control
+- 🔐 Use environment-specific configuration files
+- 🛡️ Generate strong secrets for production
+- 📋 Follow the security checklist in the documentation
 
 ## 🔧 Technology Stack
 

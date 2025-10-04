@@ -3,6 +3,7 @@ package hris.hris.service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -12,22 +13,28 @@ import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 
 @Service
+@ConditionalOnProperty(name = "spring.mail.host")
 @Slf4j
 public class EmailService {
 
-    @Autowired
+    @Autowired(required = false)
     private JavaMailSender mailSender;
 
     @Value("${app.frontend.url:http://localhost:3000}")
     private String frontendUrl;
 
-    @Value("${spring.mail.username}")
+    @Value("${spring.mail.username:}")
     private String fromEmail;
 
     // Use verified sender email for SendGrid
     private final String verifiedSenderEmail = "dihardmg@gmail.com";
 
     public void sendPasswordResetEmail(String toEmail, String resetToken) {
+        if (mailSender == null) {
+            log.info("Email service is disabled. Password reset token for {}: {}", toEmail, resetToken);
+            return;
+        }
+
         try {
             log.info("Attempting to send password reset email to: {}", toEmail);
             log.info("Mail configuration - Host: {}, Port: {}, Username: {}",
@@ -62,6 +69,11 @@ public class EmailService {
     }
 
     public void sendPasswordResetConfirmationEmail(String toEmail) {
+        if (mailSender == null) {
+            log.info("Email service is disabled. Password reset confirmation for {}", toEmail);
+            return;
+        }
+
         try {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom(verifiedSenderEmail);

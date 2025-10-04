@@ -15,12 +15,11 @@
 
 @token = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJtY3JkaWtAZ21haWwuY29tIiwiZW1wbG95ZWVJZCI6NDE0NiwiZW1wbG95ZWVDb2RlIjoiRU1QNjcxMzkiLCJ0aW1lem9uZSI6IkFzaWEvSmFrYXJ0YSIsImlhdCI6MTc1OTU1OTAzMCwiZXhwIjoxNzU5NjQ1NDMwfQ.yXFWeaasV2VuzVXe_49InhmtmGvzC6rBYh0HDSUTr1mUl7tq5uiEqzQJSjfkQ7g-
 
-@adminToken = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJzdXBlcnZpc29yQGhyaXMuY29tIiwiZW1wbG95ZWVJZCI6MywiZW1wbG95ZWVDb2RlIjoiU1VQMDAxIiwidGltZXpvbmUiOiJBc2lhL0pha2FydGEiLCJpYXQiOjE3NTk0NzcwMDgsImV4cCI6MTc1OTQ3NzMwOH0.DFPl8C_PGiws5qYJbVlCAKa8Ts9WMzrGRjYB9JC0yB8v6K8SucxaKSbEq7sMVsC7
-
+@adminToken = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJzdXBlcnZpc29yQGhyaXMuY29tIiwiZW1wbG95ZWVJZCI6MywiZW1wbG95ZWVDb2RlIjoiU1VQMDAxIiwidGltZXpvbmUiOiJBc2lhL0pha2FydGEiLCJpYXQiOjE3NTk1NjI2OTMsImV4cCI6MTc1OTY0OTA5M30.8ak__3WzprFL_fq6IWc9bxUmeZM7m_M8B5IIftBvxjaBr9thYlfMgKPIGZt359Gb
 # --- DYNAMIC VARIABLES ---
 @employeeId = 4146
 @attendanceUuid = 74dfbcdd-8ae8-4476-8f58-ae81f367da54
-@leaveRequestUuid = 71f4bd0a-9fe5-47ed-b8bb-8af04bc30c23
+@leaveRequestUuid = b350343f-ab94-4e37-8dd8-c25604942d52
 
 ### =====================================================
 ### 1. AUTHENTICATION ENDPOINTS
@@ -59,7 +58,7 @@ Content-Type: application/json
 
 {
   "email": "mcrdik@gmail.com",
-  "password": "admin1"
+  "password": "admin1234"
 }
 
 
@@ -126,16 +125,16 @@ Content-Type: application/json
 }
 
 ### @name verifyResetToken
-GET {{baseUrl}}/api/auth/password-reset/verify-token?token=24c50e40-a262-40db-8c6e-1418ec9feda3
+GET {{baseUrl}}/api/auth/password-reset/verify-token?token=d2089980-f156-492d-8cc3-c0699a9e871a
 
 ### @name resetPasswordWithValidToken
 POST {{baseUrl}}/api/auth/password-reset/reset
 Content-Type: application/json
 
 {
-  "token": "24c50e40-a262-40db-8c6e-1418ec9feda3",
-  "newPassword": "admin1",
-  "confirmPassword": "admin1"
+  "token": "d2089980-f156-492d-8cc3-c0699a9e871a",
+  "newPassword": "admin1234",
+  "confirmPassword": "admin1234"
 }
 
 > {%
@@ -152,7 +151,7 @@ POST {{baseUrl}}/api/auth/password-reset/reset
 Content-Type: application/json
 
 {
-  "token": "b53d0cb9-6bc8-4bc5-961f-d92ec14d9bd3",
+  "token": "d2089980-f156-492d-8cc3-c0699a9e871a",
   "newPassword": "Terserah123@",
   "confirmPassword": "Terserah123@"
 }
@@ -274,7 +273,7 @@ GET http://localhost:8083/api/attendance/74dfbcdd-8ae8-4476-8f58-ae81f367da54
 Authorization: Bearer {{token}}
 
 ### @name getAttendanceByUuidAsSupervisor
-GET {{baseUrl}}/api/attendance/74dfbcdd-8ae8-4476-8f58-ae81f36a54
+GET {{baseUrl}}/api/attendance/2198d8b6-7218-44db-89c8-69485550458b
 Authorization: Bearer {{adminToken}}
 
 ### @name clockInTwice
@@ -301,8 +300,8 @@ Authorization: Bearer {{token}}
 
 {
   "leaveType": "ANNUAL_LEAVE",
-  "startDate": "2025-12-07",
-  "endDate": "2025-12-08",
+  "startDate": "2025-12-09",
+  "endDate": "2025-12-09",
   "reason": "Family vacation - attending wedding ceremony"
 }
 
@@ -406,7 +405,7 @@ GET {{baseUrl}}/api/leave/request/550e8400-e29b-41d4-a716-446655440003
 Authorization: Bearer {{adminToken}}
 
 ### @name getNonExistentLeaveRequestByUuid
-GET {{baseUrl}}/api/leave/request/550e8400-e29b-41d4-a716-446655449998
+GET {{baseUrl}}/api/leave/request/b350343f-ab94-4e37-8dd8-c25604942d52
 Authorization: Bearer {{token}}
 
 ### @name getNonExistentLeaveRequest999

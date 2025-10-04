@@ -175,6 +175,75 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
+    @ExceptionHandler(LeaveRequestException.class)
+    public ResponseEntity<Map<String, Object>> handleLeaveRequestException(
+            LeaveRequestException ex, WebRequest request) {
+        log.warn("Leave request business error: {}", ex.getMessage());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        response.put("status", HttpStatus.CONFLICT.value());
+        response.put("error", "Conflict");
+        response.put("message", ex.getMessage());
+        response.put("path", request.getDescription(false).replace("uri=", ""));
+
+        // Add error code and details if available
+        if (ex.getErrorCode() != null) {
+            response.put("errorCode", ex.getErrorCode());
+        }
+        if (ex.getDetails() != null) {
+            response.put("details", ex.getDetails());
+        }
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(AttendanceException.class)
+    public ResponseEntity<Map<String, Object>> handleAttendanceException(
+            AttendanceException ex, WebRequest request) {
+        log.warn("Attendance business error: {}", ex.getMessage());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        response.put("status", HttpStatus.CONFLICT.value());
+        response.put("error", "Conflict");
+        response.put("message", ex.getMessage());
+        response.put("path", request.getDescription(false).replace("uri=", ""));
+
+        // Add error code and details if available
+        if (ex.getErrorCode() != null) {
+            response.put("errorCode", ex.getErrorCode());
+        }
+        if (ex.getDetails() != null) {
+            response.put("details", ex.getDetails());
+        }
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<Map<String, Object>> handleBusinessException(
+            BusinessException ex, WebRequest request) {
+        log.warn("Business logic error: {}", ex.getMessage());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        response.put("status", HttpStatus.UNPROCESSABLE_ENTITY.value());
+        response.put("error", "Unprocessable Entity");
+        response.put("message", ex.getMessage());
+        response.put("path", request.getDescription(false).replace("uri=", ""));
+
+        // Add error code and details if available
+        if (ex.getErrorCode() != null) {
+            response.put("errorCode", ex.getErrorCode());
+        }
+        if (ex.getDetails() != null) {
+            response.put("details", ex.getDetails());
+        }
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(response);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGlobalException(
             Exception ex, WebRequest request) {

@@ -3,13 +3,16 @@ package hris.hris.controller;
 import hris.hris.dto.ApiResponse;
 import hris.hris.dto.AttendanceDto;
 import hris.hris.dto.ClockInRequest;
+import hris.hris.dto.ErrorResponse;
 import hris.hris.dto.PaginatedAttendanceResponse;
+import hris.hris.exception.AttendanceException;
 import hris.hris.model.Attendance;
 import hris.hris.model.Employee;
 import hris.hris.repository.AttendanceRepository;
 import hris.hris.repository.EmployeeRepository;
 import hris.hris.security.JwtUtil;
 import hris.hris.service.AttendanceService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -158,13 +161,13 @@ public class AttendanceController {
 
     @GetMapping("/{uuid}")
     @PreAuthorize("hasRole('EMPLOYEE') or hasRole('SUPERVISOR') or hasRole('HR') or hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<AttendanceDto>> getAttendanceByUuid(@PathVariable UUID uuid) {
+    public ResponseEntity<?> getAttendanceByUuid(@PathVariable UUID uuid, HttpServletRequest request) {
         try {
             Long currentEmployeeId = getEmployeeIdFromAuth();
 
             var attendanceEntityOpt = attendanceRepository.findByUuid(uuid);
             if (attendanceEntityOpt.isEmpty()) {
-                return ResponseEntity.status(404).body(ApiResponse.error("Attendance record not found."));
+                throw new AttendanceException(AttendanceException.AttendanceErrorType.NOT_FOUND);
             }
 
             var attendanceEntity = attendanceEntityOpt.get();
@@ -189,6 +192,8 @@ public class AttendanceController {
             AttendanceDto attendanceDto = attendanceService.mapToDto(attendanceEntity);
             return ResponseEntity.ok(ApiResponse.success(attendanceDto, "Attendance record retrieved successfully"));
 
+        } catch (AttendanceException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Get attendance by UUID failed", e);
             String errorMessage = e.getMessage() != null ? e.getMessage() : "Failed to get attendance record";

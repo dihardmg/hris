@@ -40,17 +40,35 @@ mvnw
 
 ### Environment & Security ###
 # Application properties with sensitive data
-application-dev.properties
-application-local.properties
-application-prod.properties
-application-staging.properties
+application-*.properties
+!application.properties
+!application-sample.properties
 
 # Environment files
-.env
-.env.local
-.env.development
-.env.production
-.env.staging
+.env*
+.envrc
+docker-compose.override.yml
+docker-compose.prod.yml
+
+# Secrets and certificates
+*.pem
+*.key
+*.crt
+*.p12
+*.jks
+keystore/
+certs/
+secrets/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Configuration with secrets
+config/
+secrets/
+*.secret
 
 # Log files
 *.log

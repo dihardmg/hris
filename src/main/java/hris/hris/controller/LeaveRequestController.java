@@ -4,6 +4,7 @@ import hris.hris.dto.ApiResponse;
 import hris.hris.dto.LeaveRequestDto;
 import hris.hris.dto.LeaveRequestResponseDto;
 import hris.hris.dto.PaginatedLeaveRequestResponse;
+import hris.hris.exception.LeaveRequestException;
 import hris.hris.model.LeaveRequest;
 import hris.hris.model.Employee;
 import hris.hris.repository.EmployeeRepository;
@@ -137,45 +138,38 @@ public class LeaveRequestController {
     @PreAuthorize("hasRole('EMPLOYEE') or hasRole('SUPERVISOR') or hasRole('HR') or hasRole('ADMIN')")
     public ResponseEntity<?> getLeaveRequestByUuid(@RequestHeader(value = "Authorization", required = false) String token,
                                                   @PathVariable UUID uuid) {
-        try {
-            Long currentEmployeeId = getEmployeeIdFromRequest(token);
+        Long currentEmployeeId = getEmployeeIdFromRequest(token);
 
-            var leaveRequestOptional = leaveRequestService.getLeaveRequestByUuid(uuid);
-            if (leaveRequestOptional.isEmpty()) {
-                return ResponseEntity.status(404).body(ApiResponse.error("Leave request not found."));
-            }
-
-            LeaveRequest leaveRequest = leaveRequestOptional.get();
-            Employee employee = leaveRequest.getEmployee();
-
-            // Authorization check: Employees can only view their own requests,
-            // Supervisors, HR, and Admin can view all requests
-            if (!currentEmployeeId.equals(employee.getId())) {
-                // Check if current user has supervisor, HR, or admin role
-                Employee currentUser = employeeRepository.findById(currentEmployeeId)
-                    .orElseThrow(() -> new RuntimeException("Current user not found"));
-
-                String userEmail = currentUser.getEmail();
-                boolean isSupervisorOrAbove = "supervisor@hris.com".equals(userEmail) ||
-                                           "hr@hris.com".equals(userEmail) ||
-                                           "admin@hris.com".equals(userEmail);
-
-                if (!isSupervisorOrAbove) {
-                    return ResponseEntity.status(403).body(ApiResponse.error("You are not authorized to view this leave request"));
-                }
-            }
-
-            // Calculate remaining balance
-            int remainingBalance = leaveRequestService.getAvailableLeaveBalance(employee, leaveRequest.getLeaveType());
-            LeaveRequestResponseDto responseDto = LeaveRequestResponseDto.fromLeaveRequest(leaveRequest, remainingBalance);
-
-            return ResponseEntity.ok(ApiResponse.success(responseDto, "Leave request retrieved successfully"));
-
-        } catch (Exception e) {
-            log.error("Get leave request by UUID failed", e);
-            String errorMessage = e.getMessage() != null ? e.getMessage() : "Failed to get leave request";
-            return ResponseEntity.badRequest().body(ApiResponse.error(errorMessage));
+        var leaveRequestOptional = leaveRequestService.getLeaveRequestByUuid(uuid);
+        if (leaveRequestOptional.isEmpty()) {
+            throw new LeaveRequestException(LeaveRequestException.LeaveErrorType.NOT_FOUND);
         }
+
+        LeaveRequest leaveRequest = leaveRequestOptional.get();
+        Employee employee = leaveRequest.getEmployee();
+
+        // Authorization check: Employees can only view their own requests,
+        // Supervisors, HR, and Admin can view all requests
+        if (!currentEmployeeId.equals(employee.getId())) {
+            // Check if current user has supervisor, HR, or admin role
+            Employee currentUser = employeeRepository.findById(currentEmployeeId)
+                .orElseThrow(() -> new RuntimeException("Current user not found"));
+
+            String userEmail = currentUser.getEmail();
+            boolean isSupervisorOrAbove = "supervisor@hris.com".equals(userEmail) ||
+                                       "hr@hris.com".equals(userEmail) ||
+                                       "admin@hris.com".equals(userEmail);
+
+            if (!isSupervisorOrAbove) {
+                throw new LeaveRequestException(LeaveRequestException.LeaveErrorType.UNAUTHORIZED);
+            }
+        }
+
+        // Calculate remaining balance
+        int remainingBalance = leaveRequestService.getAvailableLeaveBalance(employee, leaveRequest.getLeaveType());
+        LeaveRequestResponseDto responseDto = LeaveRequestResponseDto.fromLeaveRequest(leaveRequest, remainingBalance);
+
+        return ResponseEntity.ok(ApiResponse.success(responseDto, "Leave request retrieved successfully"));
     }
 
     @GetMapping("/current")
@@ -226,46 +220,32 @@ public class LeaveRequestController {
     @PreAuthorize("hasRole('SUPERVISOR')")
     public ResponseEntity<?> approveLeaveRequest(@RequestHeader(value = "Authorization", required = false) String token,
                                                 @PathVariable UUID uuid) {
-        try {
-            Long supervisorId = getEmployeeIdFromRequest(token);
+        Long supervisorId = getEmployeeIdFromRequest(token);
 
-            LeaveRequest approvedRequest = leaveRequestService.approveLeaveRequest(uuid, supervisorId);
+        LeaveRequest approvedRequest = leaveRequestService.approveLeaveRequest(uuid, supervisorId);
 
-            // Convert to DTO for consistent response
-            Employee employee = approvedRequest.getEmployee();
-            int remainingBalance = leaveRequestService.getAvailableLeaveBalance(employee, approvedRequest.getLeaveType());
-            LeaveRequestResponseDto responseDto = LeaveRequestResponseDto.fromLeaveRequest(approvedRequest, remainingBalance);
+        // Convert to DTO for consistent response
+        Employee employee = approvedRequest.getEmployee();
+        int remainingBalance = leaveRequestService.getAvailableLeaveBalance(employee, approvedRequest.getLeaveType());
+        LeaveRequestResponseDto responseDto = LeaveRequestResponseDto.fromLeaveRequest(approvedRequest, remainingBalance);
 
-            return ResponseEntity.ok(ApiResponse.success(responseDto, "Leave request approved successfully"));
-
-        } catch (Exception e) {
-            log.error("Approve leave request failed", e);
-            String errorMessage = e.getMessage() != null ? e.getMessage() : "Unknown error occurred";
-            return ResponseEntity.badRequest().body(ApiResponse.error(errorMessage));
-        }
+        return ResponseEntity.ok(ApiResponse.success(responseDto, "Leave request approved successfully"));
     }
 
     @PostMapping("/supervisor/reject/{uuid}")
     @PreAuthorize("hasRole('SUPERVISOR')")
     public ResponseEntity<?> rejectLeaveRequest(@RequestHeader(value = "Authorization", required = false) String token,
                                                @PathVariable UUID uuid) {
-        try {
-            Long supervisorId = getEmployeeIdFromRequest(token);
+        Long supervisorId = getEmployeeIdFromRequest(token);
 
-            LeaveRequest rejectedRequest = leaveRequestService.rejectLeaveRequest(uuid, supervisorId);
+        LeaveRequest rejectedRequest = leaveRequestService.rejectLeaveRequest(uuid, supervisorId);
 
-            // Convert to DTO for consistent response
-            Employee employee = rejectedRequest.getEmployee();
-            int remainingBalance = leaveRequestService.getAvailableLeaveBalance(employee, rejectedRequest.getLeaveType());
-            LeaveRequestResponseDto responseDto = LeaveRequestResponseDto.fromLeaveRequest(rejectedRequest, remainingBalance);
+        // Convert to DTO for consistent response
+        Employee employee = rejectedRequest.getEmployee();
+        int remainingBalance = leaveRequestService.getAvailableLeaveBalance(employee, rejectedRequest.getLeaveType());
+        LeaveRequestResponseDto responseDto = LeaveRequestResponseDto.fromLeaveRequest(rejectedRequest, remainingBalance);
 
-            return ResponseEntity.ok(ApiResponse.success(responseDto, "Leave request rejected successfully"));
-
-        } catch (Exception e) {
-            log.error("Reject leave request failed", e);
-            String errorMessage = e.getMessage() != null ? e.getMessage() : "Unknown error occurred";
-            return ResponseEntity.badRequest().body(ApiResponse.error(errorMessage));
-        }
+        return ResponseEntity.ok(ApiResponse.success(responseDto, "Leave request rejected successfully"));
     }
 
     @GetMapping("/balance")

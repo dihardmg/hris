@@ -5,6 +5,7 @@ import hris.hris.model.Employee;
 import hris.hris.model.LeaveRequest;
 import hris.hris.repository.EmployeeRepository;
 import hris.hris.repository.LeaveRequestRepository;
+import hris.hris.exception.LeaveRequestException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -85,10 +86,10 @@ public class LeaveRequestService {
     @Transactional
     public LeaveRequest approveLeaveRequest(UUID uuid, Long supervisorId) {
         LeaveRequest leaveRequest = leaveRequestRepository.findByUuid(uuid)
-            .orElseThrow(() -> new RuntimeException("Leave request not found"));
+            .orElseThrow(() -> new LeaveRequestException(LeaveRequestException.LeaveErrorType.NOT_FOUND));
 
         if (!leaveRequest.getStatus().equals(LeaveRequest.RequestStatus.PENDING)) {
-            throw new RuntimeException("Leave request is not in pending status");
+            throw new LeaveRequestException(LeaveRequestException.LeaveErrorType.NOT_PENDING);
         }
 
         Employee supervisor = employeeRepository.findById(supervisorId)
@@ -96,7 +97,7 @@ public class LeaveRequestService {
 
         Employee employee = leaveRequest.getEmployee();
         if (!employee.getSupervisorId().equals(supervisorId)) {
-            throw new RuntimeException("You are not authorized to approve this leave request");
+            throw new LeaveRequestException(LeaveRequestException.LeaveErrorType.UNAUTHORIZED);
         }
 
         validateLeaveBalance(employee, convertToDto(leaveRequest));
@@ -116,10 +117,10 @@ public class LeaveRequestService {
     @Transactional
     public LeaveRequest rejectLeaveRequest(UUID uuid, Long supervisorId) {
         LeaveRequest leaveRequest = leaveRequestRepository.findByUuid(uuid)
-            .orElseThrow(() -> new RuntimeException("Leave request not found"));
+            .orElseThrow(() -> new LeaveRequestException(LeaveRequestException.LeaveErrorType.NOT_FOUND));
 
         if (!leaveRequest.getStatus().equals(LeaveRequest.RequestStatus.PENDING)) {
-            throw new RuntimeException("Leave request is not in pending status");
+            throw new LeaveRequestException(LeaveRequestException.LeaveErrorType.NOT_PENDING);
         }
 
         Employee supervisor = employeeRepository.findById(supervisorId)

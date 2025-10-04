@@ -35,7 +35,7 @@ public class PasswordResetService {
     @Autowired
     private PasswordHistoryRepository passwordHistoryRepository;
 
-    @Autowired
+    @Autowired(required = false)
     private EmailService emailService;
 
     @Autowired
@@ -81,15 +81,21 @@ public class PasswordResetService {
             tokenRepository.save(token);
 
             // Send email
-            try {
-                emailService.sendPasswordResetEmail(email, resetToken);
-                log.info("Password reset email sent to: {}", email);
-            } catch (Exception e) {
-                log.error("Failed to send password reset email to {}: {}", email, e.getMessage());
-                log.warn("!!! FOR TESTING ONLY - Reset token: {} !!!", resetToken);
+            if (emailService != null) {
+                try {
+                    emailService.sendPasswordResetEmail(email, resetToken);
+                    log.info("Password reset email sent to: {}", email);
+                } catch (Exception e) {
+                    log.error("Failed to send password reset email to {}: {}", email, e.getMessage());
+                    log.warn("!!! FOR TESTING ONLY - Reset token: {} !!!", resetToken);
+                    log.warn("!!! Use this link for testing: {}/reset-password?token={} !!!",
+                        frontendUrl, resetToken);
+                    // Continue with success response to prevent email enumeration
+                }
+            } else {
+                log.warn("Email service is disabled. FOR TESTING ONLY - Reset token: {}", resetToken);
                 log.warn("!!! Use this link for testing: {}/reset-password?token={} !!!",
                     frontendUrl, resetToken);
-                // Continue with success response to prevent email enumeration
             }
         } else {
             log.info("Password reset requested for non-existent email: {}", email);
@@ -149,10 +155,14 @@ public class PasswordResetService {
         tokenRepository.invalidateAllTokensForEmail(employee.getEmail(), LocalDateTime.now());
 
         // Send confirmation email
-        try {
-            emailService.sendPasswordResetConfirmationEmail(employee.getEmail());
-        } catch (Exception e) {
-            log.error("Failed to send password reset confirmation email: {}", e.getMessage());
+        if (emailService != null) {
+            try {
+                emailService.sendPasswordResetConfirmationEmail(employee.getEmail());
+            } catch (Exception e) {
+                log.error("Failed to send password reset confirmation email: {}", e.getMessage());
+            }
+        } else {
+            log.info("Email service is disabled. Password reset confirmation skipped for: {}", employee.getEmail());
         }
 
         log.info("Password reset successful for employee: {} (ID: {})", employee.getEmail(), employee.getId());

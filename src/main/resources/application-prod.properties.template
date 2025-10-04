@@ -1,0 +1,85 @@
+# Production Environment Configuration
+# Copy this file to application-prod.properties
+# This file uses environment variables for maximum security
+# All sensitive data MUST be set in environment variables
+
+# Database Configuration (from environment variables)
+spring.datasource.url=jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+spring.datasource.username=${DB_USERNAME}
+spring.datasource.password=${DB_PASSWORD}
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+# JPA Configuration (Production)
+spring.jpa.show-sql=${DB_SHOW_SQL:false}
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+
+# Redis Configuration (from environment variables)
+spring.redis.host=${REDIS_HOST}
+spring.redis.port=${REDIS_PORT:6379}
+spring.redis.password=${REDIS_PASSWORD}
+
+# Logging Configuration (from environment variables)
+logging.level.hris=${LOG_LEVEL:INFO}
+logging.level.org.springframework.security=${SECURITY_LOG_LEVEL:WARN}
+logging.file.name=${LOG_FILE:logs/hris.log}
+logging.logback.rollingpolicy.max-file-size=${LOG_MAX_FILE_SIZE:10MB}
+logging.logback.rollingpolicy.max-history=${LOG_MAX_HISTORY:30}
+
+# Server Configuration (from environment variables)
+server.port=${SERVER_PORT:8080}
+
+# JWT Configuration (from environment variables - CRITICAL: USE STRONG SECRET!)
+jwt.secret=${JWT_SECRET}
+
+# Frontend URL (from environment variables)
+app.frontend.url=${FRONTEND_URL}
+
+# Mail Configuration (from environment variables)
+spring.mail.host=${MAIL_HOST}
+spring.mail.port=${MAIL_PORT:587}
+spring.mail.username=${MAIL_USERNAME}
+spring.mail.password=${MAIL_PASSWORD}
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+spring.mail.properties.mail.smtp.ssl.trust=${MAIL_SMTP_TRUST:smtp.sendgrid.net}
+spring.mail.properties.mail.smtp.connectiontimeout=${MAIL_TIMEOUT:10000}
+spring.mail.properties.mail.smtp.timeout=${MAIL_TIMEOUT:10000}
+
+# Security Headers (Production - from environment variables)
+server.servlet.session.cookie.secure=${COOKIE_SECURE:true}
+server.servlet.session.cookie.http-only=${COOKIE_HTTP_ONLY:true}
+server.servlet.session.cookie.same-site=${COOKIE_SAME_SITE:strict}
+
+# SSL Configuration (from environment variables - enabled in production)
+server.ssl.enabled=${SSL_ENABLED:false}
+server.ssl.key-store=${SSL_KEYSTORE:classpath:keystore.p12}
+server.ssl.key-store-password=${SSL_KEYSTORE_PASSWORD}
+server.ssl.key-store-type=${SSL_KEYSTORE_TYPE:PKCS12}
+server.ssl.key-alias=${SSL_KEY_ALIAS:hris-server}
+
+# Monitoring and Health Checks (from environment variables)
+management.endpoints.web.exposure.include=${MANAGEMENT_ENDPOINTS:health,info,metrics}
+management.endpoint.health.show-details=${HEALTH_SHOW_DETAILS:when-authorized}
+management.info.env.enabled=${INFO_ENV_ENABLED:false}
+
+# Production-specific optimizations
+spring.jmx.enabled=${JMX_ENABLED:false}
+spring.output.ansi.enabled=${ANSI_ENABLED:false}
+
+# Cache Configuration (from environment variables)
+spring.cache.type=${CACHE_TYPE:none}
+spring.cache.cache-names=${CACHE_NAMES:users,permissions,settings}
+
+# Session Configuration (from environment variables)
+server.servlet.session.timeout=${SESSION_TIMEOUT:30m}
+server.servlet.session.cookie.max-age=${COOKIE_MAX_AGE:86400}
+
+# File Upload Configuration (from environment variables)
+spring.servlet.multipart.max-file-size=${MAX_FILE_SIZE:10MB}
+spring.servlet.multipart.max-request-size=${MAX_REQUEST_SIZE:10MB}
+
+# Additional Production Security Headers
+security.headers.frame-options=${FRAME_OPTIONS:DENY}
+security.headers.content-type-options=${CONTENT_TYPE_OPTIONS:nosniff}
+security.headers.xss-protection=${XSS_PROTECTION:1; mode=block}
+security.headers.referrer-policy=${REFERRER_POLICY:strict-origin-when-cross-origin}

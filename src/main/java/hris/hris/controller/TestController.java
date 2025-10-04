@@ -17,26 +17,32 @@ import java.util.Map;
 @Slf4j
 public class TestController {
 
-    @Autowired
+    @Autowired(required = false)
     private EmailService emailService;
 
     @GetMapping("/email")
     public ResponseEntity<Map<String, Object>> testEmail(@RequestParam String to) {
         Map<String, Object> response = new HashMap<>();
 
-        try {
-            log.info("Testing email sending to: {}", to);
-            emailService.sendPasswordResetEmail(to, "test-token-123456");
+        if (emailService != null) {
+            try {
+                log.info("Testing email sending to: {}", to);
+                emailService.sendPasswordResetEmail(to, "test-token-123456");
 
-            response.put("success", true);
-            response.put("message", "Test email sent successfully to: " + to);
-            log.info("Test email sent successfully");
+                response.put("success", true);
+                response.put("message", "Test email sent successfully to: " + to);
+                log.info("Test email sent successfully");
 
-        } catch (Exception e) {
-            log.error("Failed to send test email: {}", e.getMessage(), e);
+            } catch (Exception e) {
+                log.error("Failed to send test email: {}", e.getMessage(), e);
+                response.put("success", false);
+                response.put("message", "Failed to send test email: " + e.getMessage());
+                response.put("error", e.getClass().getSimpleName());
+            }
+        } else {
             response.put("success", false);
-            response.put("message", "Failed to send test email: " + e.getMessage());
-            response.put("error", e.getClass().getSimpleName());
+            response.put("message", "Email service is disabled. Cannot send test emails.");
+            response.put("error", "EmailService not available");
         }
 
         return ResponseEntity.ok(response);
