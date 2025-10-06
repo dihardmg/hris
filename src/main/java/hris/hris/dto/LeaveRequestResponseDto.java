@@ -10,7 +10,7 @@ import java.util.UUID;
 @Data
 public class LeaveRequestResponseDto {
     private UUID uuid;
-    private LeaveRequest.LeaveType leaveType;
+    private LeaveTypeDto leaveType;
     private LocalDate startDate;
     private LocalDate endDate;
     private Integer totalDays;
@@ -31,10 +31,16 @@ public class LeaveRequestResponseDto {
         private String email;
     }
 
-    public static LeaveRequestResponseDto fromLeaveRequest(LeaveRequest leaveRequest, Integer remainingBalance) {
+    public static LeaveRequestResponseDto fromLeaveRequest(LeaveRequest leaveRequest, Integer remainingBalanceOverride) {
         LeaveRequestResponseDto dto = new LeaveRequestResponseDto();
         dto.setUuid(leaveRequest.getUuid());
-        dto.setLeaveType(leaveRequest.getLeaveType());
+        // Set leave type information
+        LeaveTypeDto leaveTypeDto = new LeaveTypeDto();
+        leaveTypeDto.setId(leaveRequest.getLeaveType().getId());
+        leaveTypeDto.setCode(leaveRequest.getLeaveType().getCode());
+        leaveTypeDto.setName(leaveRequest.getLeaveType().getName());
+        leaveTypeDto.setHasBalanceQuota(leaveRequest.getLeaveType().getHasBalanceQuota());
+        dto.setLeaveType(leaveTypeDto);
         dto.setStartDate(leaveRequest.getStartDate());
         dto.setEndDate(leaveRequest.getEndDate());
         dto.setTotalDays(leaveRequest.getTotalDays());
@@ -42,7 +48,8 @@ public class LeaveRequestResponseDto {
         dto.setStatus(leaveRequest.getStatus());
         dto.setSubmissionDate(leaveRequest.getCreatedAt());
         dto.setUpdatedAt(leaveRequest.getUpdatedAt());
-        dto.setRemainingBalance(remainingBalance);
+        // Use override if provided, otherwise calculate it dynamically
+        dto.setRemainingBalance(remainingBalanceOverride != null ? remainingBalanceOverride : 0);
 
         // Add created by information if present
         if (leaveRequest.getCreatedBy() != null) {

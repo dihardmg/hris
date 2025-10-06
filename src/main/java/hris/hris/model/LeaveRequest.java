@@ -40,10 +40,11 @@ public class LeaveRequest {
     @Column(name = "employee_id", insertable = false, updatable = false)
     private Long employeeId;
 
-    @Column(name = "leave_type")
-    @Enumerated(EnumType.STRING)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "leave_type_id", nullable = false)
     private LeaveType leaveType;
 
+  
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 
@@ -76,7 +77,8 @@ public class LeaveRequest {
     @JoinColumn(name = "updated_by")
     private Employee updatedBy;
 
-    public enum LeaveType {
+  
+    public enum LeaveTypeEnum {
         ANNUAL_LEAVE, SICK_LEAVE, MATERNITY_LEAVE, PATERNITY_LEAVE, UNPAID_LEAVE, COMPASSIONATE_LEAVE
     }
 

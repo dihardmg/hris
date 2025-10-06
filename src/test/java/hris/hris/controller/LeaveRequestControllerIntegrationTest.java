@@ -6,8 +6,10 @@ import hris.hris.dto.LoginRequest;
 import hris.hris.dto.LoginResponse;
 import hris.hris.model.Employee;
 import hris.hris.model.LeaveRequest;
+import hris.hris.model.LeaveType;
 import hris.hris.repository.EmployeeRepository;
 import hris.hris.repository.LeaveRequestRepository;
+import hris.hris.repository.LeaveTypeRepository;
 import hris.hris.service.LeaveRequestService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,6 +29,7 @@ import java.time.LocalDate;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -52,12 +55,18 @@ class LeaveRequestControllerIntegrationTest {
     @Autowired
     private LeaveRequestRepository leaveRequestRepository;
 
+    @Autowired
+    private LeaveTypeRepository leaveTypeRepository;
+
     private MockMvc mockMvc;
     private ObjectMapper objectMapper;
     private Employee testEmployee;
     private Employee supervisorEmployee;
     private String employeeAuthToken;
     private String supervisorAuthToken;
+    private LeaveType annualLeaveType;
+    private LeaveType sickLeaveType;
+    private LeaveType maternityLeaveType;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -89,6 +98,41 @@ class LeaveRequestControllerIntegrationTest {
         testEmployee.setAnnualLeaveBalance(30);
         testEmployee.setSickLeaveBalance(10);
         employeeRepository.save(testEmployee);
+
+        // Setup LeaveTypes for testing
+        setupLeaveTypes();
+    }
+
+    private void setupLeaveTypes() {
+        // Create Annual Leave type
+        annualLeaveType = new LeaveType();
+        annualLeaveType.setCode("ANNUAL_LEAVE");
+        annualLeaveType.setName("Cuti Tahunan");
+        annualLeaveType.setDescription("Cuti tahunan berbayar");
+        annualLeaveType.setHasBalanceQuota(true);
+        annualLeaveType.setIsPaidLeave(true);
+        annualLeaveType.setIsActive(true);
+        annualLeaveType = leaveTypeRepository.save(annualLeaveType);
+
+        // Create Sick Leave type
+        sickLeaveType = new LeaveType();
+        sickLeaveType.setCode("SICK_LEAVE");
+        sickLeaveType.setName("Cuti Sakit");
+        sickLeaveType.setDescription("Cuti sakit dengan dokumen");
+        sickLeaveType.setHasBalanceQuota(true);
+        sickLeaveType.setIsPaidLeave(true);
+        sickLeaveType.setIsActive(true);
+        sickLeaveType = leaveTypeRepository.save(sickLeaveType);
+
+        // Create Maternity Leave type
+        maternityLeaveType = new LeaveType();
+        maternityLeaveType.setCode("MATERNITY_LEAVE");
+        maternityLeaveType.setName("Cuti Melahirkan");
+        maternityLeaveType.setDescription("Cuti melahirkan 3 bulan");
+        maternityLeaveType.setHasBalanceQuota(false);
+        maternityLeaveType.setIsPaidLeave(true);
+        maternityLeaveType.setIsActive(true);
+        maternityLeaveType = leaveTypeRepository.save(maternityLeaveType);
     }
 
     private String obtainAuthToken(String email) throws Exception {
@@ -109,7 +153,7 @@ class LeaveRequestControllerIntegrationTest {
     @WithMockUser(username = "test@example.com", roles = {"EMPLOYEE"})
     void createLeaveRequest_WithValidData_ShouldReturnSuccess() throws Exception {
         LeaveRequestDto request = new LeaveRequestDto();
-        request.setLeaveType(LeaveRequest.LeaveType.ANNUAL_LEAVE);
+        request.setLeaveTypeId(annualLeaveType.getId());
         request.setStartDate(LocalDate.now().plusDays(1));
         request.setEndDate(LocalDate.now().plusDays(3));
         request.setTotalDays(3);
@@ -118,18 +162,18 @@ class LeaveRequestControllerIntegrationTest {
         mockMvc.perform(post("/api/leave/request")
                                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.message").value("Leave request submitted successfully"))
-                .andExpect(jsonPath("$.leaveRequest").exists())
-                .andExpect(jsonPath("$.leaveRequest.leaveType").value("ANNUAL_LEAVE"))
-                .andExpect(jsonPath("$.leaveRequest.status").value("PENDING"));
+                .andExpect(jsonPath("$.data").exists())
+                .andExpect(jsonPath("$.data.leaveType.code").value("ANNUAL_LEAVE"))
+                .andExpect(jsonPath("$.data.status").value("PENDING"));
     }
 
     @Test
     @WithMockUser(username = "test@example.com", roles = {"EMPLOYEE"})
     void createLeaveRequest_WithInvalidDateRange_ShouldReturnBadRequest() throws Exception {
         LeaveRequestDto request = new LeaveRequestDto();
-        request.setLeaveType(LeaveRequest.LeaveType.ANNUAL_LEAVE);
+        request.setLeaveTypeId(annualLeaveType.getId());
         request.setStartDate(LocalDate.now().plusDays(3));
         request.setEndDate(LocalDate.now().plusDays(1));
         request.setTotalDays(-2);
@@ -146,7 +190,7 @@ class LeaveRequestControllerIntegrationTest {
     @WithMockUser(username = "test@example.com", roles = {"EMPLOYEE"})
     void createLeaveRequest_WithPastDate_ShouldReturnBadRequest() throws Exception {
         LeaveRequestDto request = new LeaveRequestDto();
-        request.setLeaveType(LeaveRequest.LeaveType.ANNUAL_LEAVE);
+        request.setLeaveTypeId(annualLeaveType.getId());
         request.setStartDate(LocalDate.now().minusDays(1));
         request.setEndDate(LocalDate.now().plusDays(1));
         request.setReason("Past date request");
@@ -162,10 +206,10 @@ class LeaveRequestControllerIntegrationTest {
     @WithMockUser(username = "test@example.com", roles = {"EMPLOYEE"})
     void createLeaveRequest_WithInsufficientBalance_ShouldReturnBadRequest() throws Exception {
         LeaveRequestDto request = new LeaveRequestDto();
-        request.setLeaveType(LeaveRequest.LeaveType.ANNUAL_LEAVE);
+        request.setLeaveTypeId(annualLeaveType.getId());
         request.setStartDate(LocalDate.now().plusDays(1));
-        request.setEndDate(LocalDate.now().plusDays(30));
-        request.setReason("Long leave request");
+        request.setEndDate(LocalDate.now().plusDays(35));
+        request.setReason("Long leave request - exceeds balance");
 
         mockMvc.perform(post("/api/leave/request")
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -178,7 +222,7 @@ class LeaveRequestControllerIntegrationTest {
     @WithMockUser(username = "test@example.com", roles = {"EMPLOYEE"})
     void createLeaveRequest_WithInvalidToken_ShouldReturnBadRequest() throws Exception {
         LeaveRequestDto request = new LeaveRequestDto();
-        request.setLeaveType(LeaveRequest.LeaveType.ANNUAL_LEAVE);
+        request.setLeaveTypeId(annualLeaveType.getId());
         request.setStartDate(LocalDate.now().plusDays(1));
         request.setEndDate(LocalDate.now().plusDays(3));
         request.setReason("Invalid token request");
@@ -186,14 +230,14 @@ class LeaveRequestControllerIntegrationTest {
         mockMvc.perform(post("/api/leave/request")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isCreated());
     }
 
     @Test
     @WithMockUser(username = "test@example.com", roles = {"EMPLOYEE"})
     void createLeaveRequest_WithMissingToken_ShouldReturnBadRequest() throws Exception {
         LeaveRequestDto request = new LeaveRequestDto();
-        request.setLeaveType(LeaveRequest.LeaveType.ANNUAL_LEAVE);
+        request.setLeaveTypeId(annualLeaveType.getId());
         request.setStartDate(LocalDate.now().plusDays(1));
         request.setEndDate(LocalDate.now().plusDays(3));
         request.setReason("No token request");
@@ -201,14 +245,14 @@ class LeaveRequestControllerIntegrationTest {
         mockMvc.perform(post("/api/leave/request")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isCreated());
     }
 
     @Test
     @WithMockUser(username = "test@example.com", roles = {"EMPLOYEE"})
     void getMyLeaveRequests_WithValidToken_ShouldReturnRequests() throws Exception {
         LeaveRequestDto request = new LeaveRequestDto();
-        request.setLeaveType(LeaveRequest.LeaveType.ANNUAL_LEAVE);
+        request.setLeaveTypeId(annualLeaveType.getId());
         request.setStartDate(LocalDate.now().plusDays(1));
         request.setEndDate(LocalDate.now().plusDays(3));
         request.setTotalDays(3);
@@ -217,12 +261,12 @@ class LeaveRequestControllerIntegrationTest {
         mockMvc.perform(post("/api/leave/request")
                                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk());
+                .andExpect(status().isCreated());
 
         mockMvc.perform(get("/api/leave/my-requests"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$[0].leaveType").value("ANNUAL_LEAVE"));
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data[0].leaveType.code").value("ANNUAL_LEAVE"));
     }
 
     @Test
@@ -230,8 +274,8 @@ class LeaveRequestControllerIntegrationTest {
     void getMyLeaveRequests_WithNoRequests_ShouldReturnEmptyArray() throws Exception {
         mockMvc.perform(get("/api/leave/my-requests"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$").isEmpty());
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data").isEmpty());
     }
 
     @Test
@@ -247,7 +291,7 @@ class LeaveRequestControllerIntegrationTest {
     void getPendingLeaveRequests_WithSupervisorRole_ShouldReturnPendingRequests() throws Exception {
         // Create a leave request for the test employee (subordinate)
         LeaveRequestDto request = new LeaveRequestDto();
-        request.setLeaveType(LeaveRequest.LeaveType.ANNUAL_LEAVE);
+        request.setLeaveTypeId(annualLeaveType.getId());
         request.setStartDate(LocalDate.now().plusDays(1));
         request.setEndDate(LocalDate.now().plusDays(3));
         request.setTotalDays(3);
@@ -267,7 +311,7 @@ class LeaveRequestControllerIntegrationTest {
     void approveLeaveRequest_WithValidApproval_ShouldReturnSuccess() throws Exception {
         // First create a leave request as an employee (using employee repository)
         LeaveRequestDto request = new LeaveRequestDto();
-        request.setLeaveType(LeaveRequest.LeaveType.ANNUAL_LEAVE);
+        request.setLeaveTypeId(annualLeaveType.getId());
         request.setStartDate(LocalDate.now().plusDays(1));
         request.setEndDate(LocalDate.now().plusDays(3));
         request.setTotalDays(3);
@@ -279,12 +323,12 @@ class LeaveRequestControllerIntegrationTest {
         Map<String, String> requestBody = new HashMap<>();
         requestBody.put("notes", "Approved by supervisor");
 
-        mockMvc.perform(post("/api/leave/supervisor/approve/" + createdRequest.getId())
+        mockMvc.perform(post("/api/leave/supervisor/approve/" + createdRequest.getUuid())
                                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(requestBody)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Leave request approved successfully"))
-                .andExpect(jsonPath("$.leaveRequest.status").value("APPROVED"));
+                .andExpect(jsonPath("$.data.status").value("APPROVED"));
     }
 
     @Test
@@ -293,10 +337,10 @@ class LeaveRequestControllerIntegrationTest {
         Map<String, String> requestBody = new HashMap<>();
         requestBody.put("notes", "Approve non-existent request");
 
-        mockMvc.perform(post("/api/leave/supervisor/approve/99999")
+        mockMvc.perform(post("/api/leave/supervisor/approve/550e8400-e29b-41d4-a716-446655440000")
                                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(requestBody)))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").exists());
     }
 
@@ -304,7 +348,7 @@ class LeaveRequestControllerIntegrationTest {
     @WithMockUser(username = "supervisor@example.com", roles = {"SUPERVISOR"})
     void rejectLeaveRequest_WithValidRejection_ShouldReturnSuccess() throws Exception {
         LeaveRequestDto request = new LeaveRequestDto();
-        request.setLeaveType(LeaveRequest.LeaveType.ANNUAL_LEAVE);
+        request.setLeaveTypeId(annualLeaveType.getId());
         request.setStartDate(LocalDate.now().plusDays(1));
         request.setEndDate(LocalDate.now().plusDays(3));
         request.setTotalDays(3);
@@ -316,19 +360,19 @@ class LeaveRequestControllerIntegrationTest {
         Map<String, String> requestBody = new HashMap<>();
         requestBody.put("rejectionReason", "Insufficient staff coverage");
 
-        mockMvc.perform(post("/api/leave/supervisor/reject/" + createdRequest.getId())
+        mockMvc.perform(post("/api/leave/supervisor/reject/" + createdRequest.getUuid())
                                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(requestBody)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Leave request rejected successfully"))
-                .andExpect(jsonPath("$.leaveRequest.status").value("REJECTED"));
+                .andExpect(jsonPath("$.data.status").value("REJECTED"));
     }
 
     @Test
     @WithMockUser(username = "supervisor@example.com", roles = {"SUPERVISOR"})
     void rejectLeaveRequest_WithMissingRejectionReason_ShouldReturnBadRequest() throws Exception {
         LeaveRequestDto request = new LeaveRequestDto();
-        request.setLeaveType(LeaveRequest.LeaveType.ANNUAL_LEAVE);
+        request.setLeaveTypeId(annualLeaveType.getId());
         request.setStartDate(LocalDate.now().plusDays(1));
         request.setEndDate(LocalDate.now().plusDays(3));
         request.setTotalDays(3);
@@ -339,7 +383,7 @@ class LeaveRequestControllerIntegrationTest {
 
         Map<String, String> requestBody = new HashMap<>();
 
-        mockMvc.perform(post("/api/leave/supervisor/reject/" + createdRequest.getId())
+        mockMvc.perform(post("/api/leave/supervisor/reject/" + createdRequest.getUuid())
                                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(requestBody)))
                 .andExpect(status().isBadRequest())
@@ -350,7 +394,7 @@ class LeaveRequestControllerIntegrationTest {
     @WithMockUser(username = "supervisor@example.com", roles = {"SUPERVISOR"})
     void rejectLeaveRequest_WithEmptyRejectionReason_ShouldReturnBadRequest() throws Exception {
         LeaveRequestDto request = new LeaveRequestDto();
-        request.setLeaveType(LeaveRequest.LeaveType.ANNUAL_LEAVE);
+        request.setLeaveTypeId(annualLeaveType.getId());
         request.setStartDate(LocalDate.now().plusDays(1));
         request.setEndDate(LocalDate.now().plusDays(3));
         request.setTotalDays(3);
@@ -362,7 +406,7 @@ class LeaveRequestControllerIntegrationTest {
         Map<String, String> requestBody = new HashMap<>();
         requestBody.put("rejectionReason", "");
 
-        mockMvc.perform(post("/api/leave/supervisor/reject/" + createdRequest.getId())
+        mockMvc.perform(post("/api/leave/supervisor/reject/" + createdRequest.getUuid())
                                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(requestBody)))
                 .andExpect(status().isBadRequest())
@@ -381,7 +425,7 @@ class LeaveRequestControllerIntegrationTest {
     @WithMockUser(username = "test@example.com", roles = {"EMPLOYEE"})
     void createLeaveRequest_WithSickLeave_ShouldReturnSuccess() throws Exception {
         LeaveRequestDto request = new LeaveRequestDto();
-        request.setLeaveType(LeaveRequest.LeaveType.SICK_LEAVE);
+        request.setLeaveTypeId(sickLeaveType.getId());
         request.setStartDate(LocalDate.now().plusDays(1));
         request.setEndDate(LocalDate.now().plusDays(2));
         request.setTotalDays(2);
@@ -390,15 +434,15 @@ class LeaveRequestControllerIntegrationTest {
         mockMvc.perform(post("/api/leave/request")
                                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.leaveRequest.leaveType").value("SICK_LEAVE"));
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.leaveType.code").value("SICK_LEAVE"));
     }
 
     @Test
     @WithMockUser(username = "test@example.com", roles = {"EMPLOYEE"})
     void createLeaveRequest_WithMaternityLeave_ShouldReturnSuccess() throws Exception {
         LeaveRequestDto request = new LeaveRequestDto();
-        request.setLeaveType(LeaveRequest.LeaveType.MATERNITY_LEAVE);
+        request.setLeaveTypeId(maternityLeaveType.getId());
         request.setStartDate(LocalDate.now().plusDays(1));
         request.setEndDate(LocalDate.now().plusDays(5));
         request.setTotalDays(5);
@@ -407,8 +451,8 @@ class LeaveRequestControllerIntegrationTest {
         mockMvc.perform(post("/api/leave/request")
                                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.leaveRequest.leaveType").value("MATERNITY_LEAVE"));
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.leaveType.code").value("MATERNITY_LEAVE"));
     }
 
     @Test

@@ -43,6 +43,19 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
                                                          @Param("startDate") LocalDateTime startDate,
                                                          Pageable pageable);
 
+    @Query("SELECT lr FROM LeaveRequest lr WHERE lr.employee.id = :employeeId AND " +
+           "lr.leaveType.code = :leaveTypeCode AND lr.status = :status")
+    List<LeaveRequest> findByEmployeeIdAndLeaveTypeCodeAndStatus(@Param("employeeId") Long employeeId,
+                                                                  @Param("leaveTypeCode") String leaveTypeCode,
+                                                                  @Param("status") LeaveRequest.RequestStatus status);
+
     // UUID-based queries for API security
     Optional<LeaveRequest> findByUuid(UUID uuid);
+
+    // Check for duplicate leave requests (same employee, start date, and end date)
+    @Query("SELECT COUNT(lr) FROM LeaveRequest lr WHERE lr.employee.id = :employeeId AND " +
+           "lr.startDate = :startDate AND lr.endDate = :endDate")
+    int countDuplicateLeaveRequests(@Param("employeeId") Long employeeId,
+                                   @Param("startDate") LocalDate startDate,
+                                   @Param("endDate") LocalDate endDate);
 }

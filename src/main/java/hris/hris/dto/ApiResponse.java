@@ -3,13 +3,17 @@ package hris.hris.dto;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class ApiResponse<T> {
     private T data;
     private String message;
+    private String error;
+    private Integer status;
 
     public static <T> ApiResponse<T> success(T data) {
         ApiResponse<T> response = new ApiResponse<>();
@@ -32,7 +36,14 @@ public class ApiResponse<T> {
 
     public static <T> ApiResponse<T> error(String message) {
         ApiResponse<T> response = new ApiResponse<>();
-        response.setMessage(message);
+        response.setError(message);
+        return response;
+    }
+
+    public static <T> ApiResponse<T> error(String message, int status) {
+        ApiResponse<T> response = new ApiResponse<>();
+        response.setError(message);
+        response.setStatus(status);
         return response;
     }
 

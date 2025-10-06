@@ -11,8 +11,11 @@ import java.time.LocalDate;
 @Data
 public class LeaveRequestDto {
 
-    @NotNull(message = "Leave type is required")
-    private LeaveRequest.LeaveType leaveType;
+    @NotNull(message = "Leave type ID is required")
+    private Long leaveTypeId;
+
+    // For backward compatibility during migration
+    private LeaveRequest.LeaveTypeEnum leaveTypeEnum;
 
     @NotNull(message = "Start date is required")
     private LocalDate startDate;

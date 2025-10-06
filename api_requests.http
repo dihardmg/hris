@@ -16,9 +16,14 @@
 
 @supervisorToken = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJzdXBlcnZpc29yQGhyaXMuY29tIiwiZW1wbG95ZWVJZCI6MywiZW1wbG95ZWVDb2RlIjoiU1VQMDAxIiwidGltZXpvbmUiOiJBc2lhL0pha2FydGEiLCJpYXQiOjE3NTk3MjU5ODUsImV4cCI6MTc1OTgxMjM4NX0.GTZNeYi1tRKmkcaqfztfCVbN5xL9zwMTpyHfBs7IDO9OpCNbmVfujP-WQ1ph2Zsy
 # --- DYNAMIC VARIABLES (Update after creating resources) ---
+# Employee and Leave Type IDs are NUMERIC (1, 2, 3...)
+# Leave Request, Attendance, Business Travel IDs are UUIDs for security
 @employeeId = 1
+@annualLeaveId = 1
+@sickLeaveId = 2
+@maternityLeaveId = 3
 @attendanceUuid = 550e8400-e29b-41d4-a716-446655440000
-@leaveRequestUuid = b350343f-ab94-4e37-8dd8-c25604942d52
+@leaveRequestUuid = e23ccc13-cb22-44f6-8641-c58bc4ca7170
 @businessTravelUuid = 4d5d4101-6fbe-408e-b473-884b620d31e6
 @passwordResetToken = your-reset-token-here
 
@@ -315,14 +320,14 @@ Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "leaveType": "ANNUAL",
-  "startDate": "2025-12-10",
-  "endDate": "2025-12-12",
+  "leaveTypeId": 10,
+  "startDate": "2025-12-11",
+  "endDate": "2025-12-17",
   "reason": "Family vacation - attending wedding ceremony"
 }
 
 > {%
-  if (response.status === 200) {
+  if (response.status === 201) {
     client.global.set("leaveRequestUuid", response.body.data.uuid);
     client.log("✅ Leave request submitted!");
     client.log("UUID: " + response.body.data.uuid);
@@ -339,7 +344,7 @@ Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "leaveType": "ANNUAL_LEAVE",
+  "leaveTypeEnum": "SICK_LEAVE",
   "startDate": "2025-11-15",
   "endDate": "2025-11-15",
   "reason": "Medical appointment and recovery"
@@ -351,9 +356,9 @@ Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "leaveType": "MATERNITY",
-  "startDate": "2025-12-01",
-  "endDate": "2025-12-30",
+  "leaveTypeId": 5,
+  "startDate": "2025-11-01",
+  "endDate": "2025-11-03",
   "reason": "Maternity leave"
 }
 
@@ -363,7 +368,7 @@ Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "leaveType": "ANNUAL",
+  "leaveTypeEnum": "ANNUAL_LEAVE",
   "startDate": "2025-12-15",
   "endDate": "2025-12-10",
   "reason": "Invalid date range"
@@ -375,7 +380,7 @@ Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "leaveType": "ANNUAL",
+  "leaveTypeEnum": "ANNUAL_LEAVE",
   "startDate": "2020-01-01",
   "endDate": "2020-01-02",
   "reason": "Past date"
@@ -443,9 +448,407 @@ Authorization: Bearer {{supervisorToken}}
 POST {{baseUrl}}/api/leave/supervisor/approve/{{leaveRequestUuid}}
 Authorization: Bearer {{token}}
 
+### @name rejectLeaveRequestWithoutReason
+POST {{baseUrl}}/api/leave/supervisor/reject/{{leaveRequestUuid}}
+Content-Type: application/json
+Authorization: Bearer {{supervisorToken}}
+
+> {%
+  if (response.status === 400) {
+    client.log("✅ Rejection without reason properly rejected!");
+    client.log("Error: " + response.body.message);
+  } else {
+    client.log("❌ Should have rejected empty reason");
+  }
+%}
+
+### @name rejectLeaveRequestMissingReason
+POST {{baseUrl}}/api/leave/supervisor/reject/{{leaveRequestUuid}}
+Content-Type: application/json
+Authorization: Bearer {{supervisorToken}}
+
+{}
+
+> {%
+  if (response.status === 400) {
+    client.log("✅ Rejection with missing reason properly rejected!");
+    client.log("Error: " + response.body.message);
+  } else {
+    client.log("❌ Should have rejected missing reason");
+  }
+%}
+
 ### @name getLeaveBalance
 GET {{baseUrl}}/api/leave/balance
 Authorization: Bearer {{token}}
+
+### @name approveNonExistentLeaveRequest
+POST {{baseUrl}}/api/leave/supervisor/approve/550e8400-e29b-41d4-a716-446655449999
+Authorization: Bearer {{supervisorToken}}
+
+> {%
+  if (response.status === 409) {
+    client.log("✅ Non-existent leave request properly handled with 409 Conflict!");
+    client.log("Error: " + response.body.message);
+  } else {
+    client.log("❌ Should return 409 for non-existent request, got: " + response.status);
+  }
+%}
+
+### @name rejectNonExistentLeaveRequest
+POST {{baseUrl}}/api/leave/supervisor/reject/550e8400-e29b-41d4-a716-446655449999
+Authorization: Bearer {{supervisorToken}}
+
+> {%
+  if (response.status === 409) {
+    client.log("✅ Non-existent leave rejection properly handled with 409 Conflict!");
+    client.log("Error: " + response.body.message);
+  } else {
+    client.log("❌ Should return 409 for non-existent request, got: " + response.status);
+  }
+%}
+
+### =====================================================
+### 4.1 LEAVE TYPES MANAGEMENT ENDPOINTS
+### =====================================================
+
+### @name getAllLeaveTypes
+GET {{baseUrl}}/api/v1/leave-types
+Authorization: Bearer {{token}}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ Leave types retrieved successfully!");
+    client.log("Total leave types: " + response.body.length);
+    if (response.body.length > 0) {
+      client.log("Sample leave type: " + response.body[0].name + " (Code: " + response.body[0].code + ")");
+      // Store leave type IDs for testing
+      client.global.set("annualLeaveId", response.body.find(t => t.code === 'ANNUAL_LEAVE')?.id || 1);
+      client.global.set("sickLeaveId", response.body.find(t => t.code === 'SICK_LEAVE')?.id || 2);
+      client.global.set("maternityLeaveId", response.body.find(t => t.code === 'MATERNITY_LEAVE')?.id || 3);
+    }
+  } else {
+    client.log("❌ Leave types retrieval failed: " + response.body.message);
+  }
+%}
+
+### @name getLeaveTypeById
+GET {{baseUrl}}/api/v1/leave-types/{{annualLeaveId}}
+Authorization: Bearer {{token}}
+
+### @name createLeaveType
+POST {{baseUrl}}/api/v1/leave-types
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "code": "SPECIAL_LEAVE",
+  "name": "Cuti Khusus",
+  "description": "Cuti untuk keperluan khusus dengan persetujuan HR",
+  "minDurationDays": 1,
+  "maxDurationDays": 5,
+  "hasBalanceQuota": false,
+  "isPaidLeave": true,
+  "requiresDocument": true,
+  "isActive": true
+}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ Leave type created successfully!");
+    client.log("Name: " + response.body.name);
+    client.log("Code: " + response.body.code);
+    client.log("Has Balance Quota: " + response.body.hasBalanceQuota);
+  } else {
+    client.log("❌ Leave type creation failed: " + response.body.message);
+  }
+%}
+
+### @name updateLeaveType
+PUT {{baseUrl}}/api/v1/leave-types/{{annualLeaveId}}
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "code": "ANNUAL_LEAVE",
+  "name": "Cuti Tahunan (Updated)",
+  "description": "Cuti tahunan berbayar minimal 12 hari kerja sesuai UU Ketenagakerjaan",
+  "minDurationDays": 12,
+  "maxDurationDays": null,
+  "hasBalanceQuota": true,
+  "isPaidLeave": true,
+  "requiresDocument": false,
+  "isActive": true
+}
+
+### @name deactivateLeaveType
+DELETE {{baseUrl}}/api/v1/leave-types/{{annualLeaveId}}
+Authorization: Bearer {{adminToken}}
+
+### =====================================================
+### 4.2 LEAVE BALANCE MANAGEMENT ENDPOINTS
+### =====================================================
+
+### @name getMyLeaveBalances
+GET {{baseUrl}}/api/v1/leave-balance/my-balances
+Authorization: Bearer {{token}}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ My leave balances retrieved successfully!");
+    client.log("Total leave types: " + response.body.length);
+    response.body.forEach(function(balance) {
+      if (balance.hasBalanceQuota) {
+        client.log(balance.leaveTypeName + ": " + balance.remainingQuota + "/" + balance.totalQuota + " days (" + balance.percentageUsed + "% used)");
+      } else {
+        client.log(balance.leaveTypeName + ": No balance quota (transactional only)");
+      }
+    });
+  } else {
+    client.log("❌ Leave balances retrieval failed: " + response.body.message);
+  }
+%}
+
+### @name getMySpecificLeaveBalance
+GET {{baseUrl}}/api/v1/leave-balance/my-balances/leave-type/{{annualLeaveId}}
+Authorization: Bearer {{token}}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ Specific leave balance retrieved!");
+    client.log("Leave Type: " + response.body.leaveTypeName);
+    client.log("Remaining: " + response.body.remainingQuota + "/" + response.body.totalQuota + " days");
+    client.log("Percentage Used: " + response.body.percentageUsed + "%");
+  } else {
+    client.log("❌ Specific leave balance retrieval failed: " + response.body.message);
+  }
+%}
+
+### @name getSubordinateLeaveBalances
+GET {{baseUrl}}/api/v1/leave-balance/subordinates
+Authorization: Bearer {{supervisorToken}}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ Subordinate leave balances retrieved!");
+    client.log("Total records: " + response.body.length);
+    response.body.forEach(function(balance) {
+      client.log(balance.employeeName + " - " + balance.leaveTypeName + ": " + balance.remainingQuota + "/" + balance.totalQuota + " days");
+    });
+  } else {
+    client.log("❌ Subordinate leave balances retrieval failed: " + response.body.message);
+  }
+%}
+
+### @name getAllLeaveBalances
+GET {{baseUrl}}/api/v1/leave-balance/all
+Authorization: Bearer {{adminToken}}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ All leave balances retrieved (Manager/HR only)!");
+    client.log("Total records: " + response.body.length);
+  } else if (response.status === 403) {
+    client.log("❌ Access denied - Manager/HR role required");
+  } else {
+    client.log("❌ All leave balances retrieval failed: " + response.body.message);
+  }
+%}
+
+### @name getEmployeeLeaveBalancesById
+GET {{baseUrl}}/api/v1/leave-balance/employee/{{employeeId}}
+Authorization: Bearer {{supervisorToken}}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ Employee leave balances retrieved by supervisor!");
+    client.log("Employee: " + response.body[0]?.employeeName);
+    response.body.forEach(function(balance) {
+      client.log(balance.leaveTypeName + ": " + balance.remainingQuota + "/" + balance.totalQuota + " days");
+    });
+  } else {
+    client.log("❌ Employee leave balances retrieval failed: " + response.body.message);
+  }
+%}
+
+### @name testLeaveBalanceAfterRequest
+GET {{baseUrl}}/api/v1/leave-balance/my-balances/leave-type/{{annualLeaveId}}
+Authorization: Bearer {{token}}
+
+### =====================================================
+### 4.3 INDONESIAN REGULATION COMPLIANCE TESTS
+### =====================================================
+
+### @name submitAnnualLeaveIndonesia
+POST {{baseUrl}}/api/leave/request
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "leaveTypeId": {{annualLeaveId}},
+  "startDate": "2025-12-01",
+  "endDate": "2025-12-12",
+  "reason": "Cuti tahunan sesuai UU Ketenagakerjaan (12 hari minimal)"
+}
+
+> {%
+  if (response.status === 201) {
+    client.log("✅ Annual leave (Indonesia compliant) submitted!");
+    client.log("Total Days: " + response.body.data.totalDays);
+    client.log("Remaining Balance: " + response.body.data.remainingBalance);
+  } else {
+    client.log("❌ Annual leave submission failed: " + response.body.message);
+  }
+%}
+
+### @name submitMaternityLeaveIndonesia
+POST {{baseUrl}}/api/leave/request
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "leaveTypeId": {{maternityLeaveId}},
+  "startDate": "2025-12-01",
+  "endDate": "2025-12-31",
+  "reason": "Cuti melahirkan 1.5 bulan sebelum + 1.5 bulan sesudah melahirkan"
+}
+
+> {%
+  if (response.status === 201) {
+    client.log("✅ Maternity leave (Indonesia compliant) submitted!");
+    client.log("Total Days: " + response.body.data.totalDays);
+    client.log("Leave Type: " + response.body.data.leaveType.name);
+  } else {
+    client.log("❌ Maternity leave submission failed: " + response.body.message);
+  }
+%}
+
+### @name submitSickLeaveWithDocument
+POST {{baseUrl}}/api/leave/request
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "leaveTypeId": {{sickLeaveId}},
+  "startDate": "2025-11-15",
+  "endDate": "2025-11-15",
+  "reason": "Cuti sakit dengan surat keterangan dokter"
+}
+
+> {%
+  if (response.status === 201) {
+    client.log("✅ Sick leave (with document requirement) submitted!");
+    client.log("Balance before approval: " + response.body.data.remainingBalance);
+  } else {
+    client.log("❌ Sick leave submission failed: " + response.body.message);
+  }
+%}
+
+### @name submitImportantReasonLeave
+POST {{baseUrl}}/api/leave/request
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "leaveTypeEnum": "IMPORTANT_REASON_LEAVE",
+  "startDate": "2025-11-20",
+  "endDate": "2025-11-22",
+  "reason": "Menikah - cuti alasan penting 3 hari"
+}
+
+> {%
+  if (response.status === 201) {
+    client.log("✅ Important reason leave (marriage) submitted!");
+    client.log("Note: This leave type has no balance quota (transactional only)");
+  } else {
+    client.log("❌ Important reason leave submission failed: " + response.body.message);
+  }
+%}
+
+### @name submitMenstrualLeave
+POST {{baseUrl}}/api/leave/request
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "leaveTypeEnum": "MENSTRUAL_LEAVE",
+  "startDate": "2025-11-10",
+  "endDate": "2025-11-11",
+  "reason": "Cuti haid hari pertama dan kedua"
+}
+
+> {%
+  if (response.status === 201) {
+    client.log("✅ Menstrual leave submitted!");
+    client.log("Note: This leave type has no balance quota (transactional only)");
+  } else {
+    client.log("❌ Menstrual leave submission failed: " + response.body.message);
+  }
+%}
+
+### @name submitCompassionateLeave
+POST {{baseUrl}}/api/leave/request
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "leaveTypeEnum": "COMPASSIONATE_LEAVE",
+  "startDate": "2025-11-05",
+  "endDate": "2025-11-06",
+  "reason": "Cuti belasungkawa - anggota keluarga meninggal"
+}
+
+> {%
+  if (response.status === 201) {
+    client.log("✅ Compassionate leave submitted!");
+    client.log("Note: This leave type has no balance quota (transactional only)");
+  } else {
+    client.log("❌ Compassionate leave submission failed: " + response.body.message);
+  }
+%}
+
+### @name submitUnpaidLeave
+POST {{baseUrl}}/api/leave/request
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "leaveTypeEnum": "UNPAID_LEAVE",
+  "startDate": "2025-12-15",
+  "endDate": "2025-12-20",
+  "reason": "Cuti tidak berbayar untuk keperluan pribadi"
+}
+
+> {%
+  if (response.status === 201) {
+    client.log("✅ Unpaid leave submitted!");
+    client.log("Note: This leave type is not paid and has no balance quota");
+  } else {
+    client.log("❌ Unpaid leave submission failed: " + response.body.message);
+  }
+%}
+
+### @name testBalanceQuotaDeduction
+# This test demonstrates that only leave types with hasBalanceQuota=true deduct balance
+GET {{baseUrl}}/api/v1/leave-balance/my-balances
+Authorization: Bearer {{token}}
+
+> {%
+  if (response.status === 200) {
+    client.log("📊 BALANCE QUOTA ANALYSIS:");
+    client.log("================================");
+    response.body.forEach(function(balance) {
+      if (balance.hasBalanceQuota) {
+        client.log("✏️ " + balance.leaveTypeName + ": " + balance.remainingQuota + "/" + balance.totalQuota + " days (REDUCES BALANCE)");
+      } else {
+        client.log("📝 " + balance.leaveTypeName + ": No balance quota (TRANSACTIONAL ONLY)");
+      }
+    });
+    client.log("================================");
+    client.log("Only Annual Leave & Sick Leave reduce balance quota");
+    client.log("Other leave types are for transaction recording only");
+  }
+%}
 
 ### @name getPendingLeaveRequestsForSupervisor
 GET {{baseUrl}}/api/leave/supervisor/pending
@@ -589,7 +992,7 @@ Authorization: Bearer {{token}}
 }
 
 > {%
-  if (response.status === 200) {
+  if (response.status === 201) {
     client.global.set("businessTravelUuid", response.body.data.uuid);
     client.log("✅ Business travel request submitted!");
     client.log("UUID: " + response.body.data.uuid);
@@ -994,25 +1397,36 @@ Authorization: Bearer {{token}}
 
 # --- WORKFLOW 1: COMPLETE EMPLOYEE DAILY WORKFLOW ---
 # 1. loginEmployee → clockIn → getTodayAttendance → clockOut → getAttendanceHistory
-# 2. submitAnnualLeave → getMyLeaveRequests → getCurrentLeave
+# 2. getAllLeaveTypes → submitAnnualLeave → getMyLeaveRequests → getMyLeaveBalances → getCurrentLeave
 # 3. getBusinessTravelCitiesDropdown → submitBusinessTravelRequest → getMyBusinessTravelRequests → getCurrentBusinessTravel
 
-# --- WORKFLOW 2: SUPERVISOR APPROVAL WORKFLOW ---
+# --- WORKFLOW 2: ENHANCED LEAVE MANAGEMENT WORKFLOW ---
+# 1. getAllLeaveTypes → test Indonesian regulation compliance
+# 2. submitAnnualLeaveIndonesia → submitMaternityLeaveIndonesia → submitSickLeaveWithDocument
+# 3. submitImportantReasonLeave → submitMenstrualLeave → submitCompassionateLeave → submitUnpaidLeave
+# 4. testBalanceQuotaDeduction → getMyLeaveBalances → verify balance behavior
+
+# --- WORKFLOW 3: SUPERVISOR APPROVAL WORKFLOW ---
 # 1. loginSupervisor → getPendingLeaveRequests → approveLeaveRequest
-# 2. getPendingBusinessTravelRequests → approveBusinessTravelRequest
-# 3. Test rejection workflow with rejectLeaveRequest and rejectBusinessTravelRequest
+# 2. getSubordinateLeaveBalances → monitor team leave quotas
+# 3. getPendingBusinessTravelRequests → approveBusinessTravelRequest
+# 4. Test rejection workflow: rejectLeaveRequest (with rejectionReason) and rejectBusinessTravelRequest
+# 5. Test rejection validation: rejectLeaveRequestWithoutReason, rejectLeaveRequestMissingReason
+# 6. Test non-existent requests: approveNonExistentLeaveRequest, rejectNonExistentLeaveRequest
 
-# --- WORKFLOW 3: HR ADMIN MANAGEMENT WORKFLOW ---
+# --- WORKFLOW 4: HR ADMIN MANAGEMENT WORKFLOW ---
 # 1. loginAdmin → registerNewEmployee → getAllEmployees → updateEmployee
-# 2. getEmployeeById → deactivateEmployee → updateFaceTemplate
-# 3. Test pagination and search functionality
+# 2. createLeaveType → updateLeaveType → getAllLeaveTypes → deactivateLeaveType
+# 3. getAllLeaveBalances → monitor organization-wide leave usage
+# 4. getEmployeeById → deactivateEmployee → updateFaceTemplate
+# 5. Test pagination and search functionality
 
-# --- WORKFLOW 4: PASSWORD RESET WORKFLOW ---
+# --- WORKFLOW 5: PASSWORD RESET WORKFLOW ---
 # 1. requestPasswordReset → checkEmail → verifyResetToken → resetPasswordWithValidToken
 # 2. Test with new password: loginEmployee
 # 3. Test security: requestPasswordResetInvalidEmail, resetPasswordWithWeakPassword
 
-# --- WORKFLOW 5: SECURITY & ERROR HANDLING ---
+# --- WORKFLOW 6: SECURITY & ERROR HANDLING ---
 # 1. Test unauthorized access: employeeAccessAdminEndpoint
 # 2. Test invalid tokens: invalidToken, expiredToken
 # 3. Test validation: submitLeaveRequestWithEmptyFields
@@ -1020,19 +1434,47 @@ Authorization: Bearer {{token}}
 
 # --- TESTING BEST PRACTICES ---
 # 1. Always update tokens after successful login
-# 2. Update UUID variables after creating resources
-# 3. Test both success and failure scenarios
-# 4. Verify response formats and status codes
-# 5. Check console logs for debugging information
-# 6. Test role-based access control thoroughly
-# 7. Validate input handling and error messages
-# 8. Test pagination and filtering parameters
+# 2. Update UUID variables after creating resources (Leave requests use UUIDs)
+# 3. Update ID variables for leave types (Leave types use numeric IDs)
+# 4. Test both success and failure scenarios
+# 5. Verify response formats and status codes
+# 6. Check console logs for debugging information
+# 7. Test role-based access control thoroughly
+# 8. Validate input handling and error messages
+# 9. Test pagination and filtering parameters
 
 # --- RESPONSE FORMAT EXPECTATIONS ---
 # Success: {"success": true, "message": "...", "data": {...}}
 # Error: {"success": false, "message": "...", "error": "ERROR_TYPE"}
 # Paginated: {"success": true, "data": {"content": [...], "totalElements": N, "totalPages": N, "currentPage": N}}
-# UUID-based lookup: All record retrieval uses UUID instead of numeric IDs for security
+# --- ID SYSTEM ARCHITECTURE ---
+# Mixed ID Approach for Security & Performance:
+# - Leave Types: Numeric IDs (1, 2, 3...) for database efficiency and simplicity
+# - Leave Requests: UUIDs for security (prevents IDOR attacks)
+# - Employees: Numeric IDs for internal references
+# - Attendance: UUIDs for security and audit trail
+# - Business Travel: UUIDs for security and tracking
+
+# --- NEW LEAVE MANAGEMENT API RESPONSES ---
+# Leave Types: [{"id": 1, "code": "ANNUAL_LEAVE", "name": "Cuti Tahunan", "hasBalanceQuota": true}]
+# Leave Balances: [{"employeeName": "...", "leaveTypeName": "...", "remainingQuota": 10, "totalQuota": 12, "percentageUsed": 16.67}]
+# Leave Requests: {"uuid": "...", "leaveType": {"id": 1, "name": "Cuti Tahunan"}, "remainingBalance": 10}
+
+# --- UPDATED STATUS CODES ---
+# Create requests: 201 Created (POST /api/leave/request, POST /api/business-travel/request)
+# Get requests: 200 OK (GET endpoints)
+# Update requests: 200 OK (PUT/PATCH endpoints)
+# Delete requests: 200 OK (DELETE endpoints)
+# Validation errors: 400 Bad Request
+# Authentication errors: 401 Unauthorized
+# Authorization errors: 403 Forbidden
+# Not found: 404 Not Found
+# Business logic conflicts: 409 Conflict (e.g., approving non-existent leave request)
+
+# --- LEAVE REJECTION API UPDATES ---
+# Rejection endpoint now requires: {"rejectionReason": "Valid reason text"}
+# Empty/null rejection reason returns: 400 Bad Request
+# Rejection reason validation: Must not be empty or whitespace only
 
 # --- SECURITY NOTES ---
 # - UUIDs prevent IDOR attacks (Insecure Direct Object Reference)
@@ -1040,6 +1482,8 @@ Authorization: Bearer {{token}}
 # - Password reset includes email enumeration protection
 # - Rate limiting prevents brute force attacks
 # - All sensitive endpoints require proper authentication
+# - Leave balance access controlled by role (Employee, Supervisor, Manager/HR)
+# - Leave type management restricted to Admin/HR roles only
 
 ### =====================================================
 ### END OF COMPREHENSIVE API TESTING SUITE

@@ -3,8 +3,10 @@ package hris.hris.service;
 import hris.hris.dto.LeaveRequestDto;
 import hris.hris.model.Employee;
 import hris.hris.model.LeaveRequest;
+import hris.hris.model.LeaveType;
 import hris.hris.repository.EmployeeRepository;
 import hris.hris.repository.LeaveRequestRepository;
+import hris.hris.repository.LeaveTypeRepository;
 import hris.hris.exception.LeaveRequestException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +29,9 @@ public class LeaveRequestService {
     @Autowired
     private EmployeeRepository employeeRepository;
 
+    @Autowired
+    private LeaveTypeRepository leaveTypeRepository;
+
     @Transactional
     public LeaveRequest createLeaveRequest(Long employeeId, LeaveRequestDto requestDto) {
         Employee employee = employeeRepository.findById(employeeId)
@@ -45,6 +50,44 @@ public class LeaveRequestService {
             throw new RuntimeException("End date cannot be in the past");
         }
 
+        // Get LeaveType entity
+        LeaveType leaveType = leaveTypeRepository.findById(requestDto.getLeaveTypeId())
+            .orElseThrow(() -> new RuntimeException("Leave type not found"));
+
+        if (!leaveType.getIsActive()) {
+            throw new RuntimeException("Leave type is not active");
+        }
+
+        // Validate minimum duration if specified
+        if (leaveType.getMinDurationDays() != null) {
+            long requestedDays = java.time.temporal.ChronoUnit.DAYS.between(
+                requestDto.getStartDate(),
+                requestDto.getEndDate()
+            ) + 1;
+            if (requestedDays < leaveType.getMinDurationDays()) {
+                throw new RuntimeException(String.format(
+                    "Minimum duration for %s is %d days",
+                    leaveType.getName(),
+                    leaveType.getMinDurationDays()
+                ));
+            }
+        }
+
+        // Validate maximum duration if specified
+        if (leaveType.getMaxDurationDays() != null) {
+            long requestedDays = java.time.temporal.ChronoUnit.DAYS.between(
+                requestDto.getStartDate(),
+                requestDto.getEndDate()
+            ) + 1;
+            if (requestedDays > leaveType.getMaxDurationDays()) {
+                throw new RuntimeException(String.format(
+                    "Maximum duration for %s is %d days",
+                    leaveType.getName(),
+                    leaveType.getMaxDurationDays()
+                ));
+            }
+        }
+
         int overlappingLeaves = leaveRequestRepository.countOverlappingLeaves(
             employeeId,
             requestDto.getStartDate(),
@@ -53,6 +96,17 @@ public class LeaveRequestService {
 
         if (overlappingLeaves > 0) {
             throw new RuntimeException("You already have approved leave during this period");
+        }
+
+        // Check for duplicate leave requests (same employee, start date, and end date)
+        int duplicateRequests = leaveRequestRepository.countDuplicateLeaveRequests(
+            employeeId,
+            requestDto.getStartDate(),
+            requestDto.getEndDate()
+        );
+
+        if (duplicateRequests > 0) {
+            throw new RuntimeException("You already have a leave request for the same period");
         }
 
         // Calculate total days automatically first
@@ -64,11 +118,11 @@ public class LeaveRequestService {
         // Set total days in DTO for validation
         requestDto.setTotalDays((int) totalDays);
 
-        validateLeaveBalance(employee, requestDto);
+        validateLeaveBalance(employee, leaveType, (int) totalDays);
 
         LeaveRequest leaveRequest = new LeaveRequest();
         leaveRequest.setEmployee(employee);
-        leaveRequest.setLeaveType(requestDto.getLeaveType());
+        leaveRequest.setLeaveType(leaveType);
         leaveRequest.setStartDate(requestDto.getStartDate());
         leaveRequest.setEndDate(requestDto.getEndDate());
         leaveRequest.setTotalDays((int) totalDays);
@@ -77,8 +131,8 @@ public class LeaveRequestService {
         leaveRequest.setCreatedBy(employee);
 
         LeaveRequest savedRequest = leaveRequestRepository.save(leaveRequest);
-        log.info("Leave request created for employee {} from {} to {}",
-                employee.getEmployeeId(), requestDto.getStartDate(), requestDto.getEndDate());
+        log.info("Leave request created for employee {} from {} to {} using leave type {}",
+                employee.getEmployeeId(), requestDto.getStartDate(), requestDto.getEndDate(), leaveType.getName());
 
         return savedRequest;
     }
@@ -100,10 +154,14 @@ public class LeaveRequestService {
             throw new LeaveRequestException(LeaveRequestException.LeaveErrorType.UNAUTHORIZED);
         }
 
-        validateLeaveBalance(employee, convertToDto(leaveRequest));
+        validateLeaveBalance(employee, leaveRequest.getLeaveType(), leaveRequest.getTotalDays());
 
-        deductLeaveBalance(employee, leaveRequest);
+        // Only deduct balance for leave types that have balance quota
+        if (leaveRequest.getLeaveType() != null && leaveRequest.getLeaveType().getHasBalanceQuota()) {
+            deductLeaveBalance(employee, leaveRequest);
+        }
 
+    
         leaveRequest.setStatus(LeaveRequest.RequestStatus.APPROVED);
         leaveRequest.setUpdatedBy(supervisor);
 
@@ -177,36 +235,52 @@ public class LeaveRequestService {
         return leaveRequestRepository.findByUuid(uuid);
     }
 
-    private void validateLeaveBalance(Employee employee, LeaveRequestDto requestDto) {
-        int availableBalance = getAvailableLeaveBalance(employee, requestDto.getLeaveType());
+    private void validateLeaveBalance(Employee employee, LeaveType leaveType, int requestedDays) {
+        // Only validate balance for leave types that have balance quota
+        if (!leaveType.getHasBalanceQuota()) {
+            return;
+        }
 
-        if (availableBalance < requestDto.getTotalDays()) {
+        int availableBalance = getAvailableLeaveBalance(employee, leaveType);
+
+        if (availableBalance < requestedDays) {
             throw new RuntimeException(String.format(
-                "Insufficient leave balance. Available: %d days, Requested: %d days",
-                availableBalance, requestDto.getTotalDays()
+                "Insufficient leave balance for %s. Available: %d days, Requested: %d days",
+                leaveType.getName(), availableBalance, requestedDays
             ));
         }
     }
 
-    public int getAvailableLeaveBalance(Employee employee, LeaveRequest.LeaveType leaveType) {
-        switch (leaveType) {
-            case ANNUAL_LEAVE:
+    public int getAvailableLeaveBalance(Employee employee, LeaveType leaveType) {
+        if (!leaveType.getHasBalanceQuota()) {
+            return 0;
+        }
+
+        switch (leaveType.getCode()) {
+            case "ANNUAL_LEAVE":
                 return employee.getAnnualLeaveBalance();
-            case SICK_LEAVE:
+            case "SICK_LEAVE":
                 return employee.getSickLeaveBalance();
             default:
-                return employee.getAnnualLeaveBalance();
+                return 0;
         }
     }
 
+  
     private void deductLeaveBalance(Employee employee, LeaveRequest leaveRequest) {
-        switch (leaveRequest.getLeaveType()) {
-            case ANNUAL_LEAVE:
+        LeaveType leaveType = leaveRequest.getLeaveType();
+
+        if (!leaveType.getHasBalanceQuota()) {
+            return;
+        }
+
+        switch (leaveType.getCode()) {
+            case "ANNUAL_LEAVE":
                 employee.setAnnualLeaveBalance(
                     employee.getAnnualLeaveBalance() - leaveRequest.getTotalDays()
                 );
                 break;
-            case SICK_LEAVE:
+            case "SICK_LEAVE":
                 employee.setSickLeaveBalance(
                     employee.getSickLeaveBalance() - leaveRequest.getTotalDays()
                 );
@@ -215,13 +289,4 @@ public class LeaveRequestService {
         employeeRepository.save(employee);
     }
 
-    private LeaveRequestDto convertToDto(LeaveRequest leaveRequest) {
-        LeaveRequestDto dto = new LeaveRequestDto();
-        dto.setLeaveType(leaveRequest.getLeaveType());
-        dto.setStartDate(leaveRequest.getStartDate());
-        dto.setEndDate(leaveRequest.getEndDate());
-        dto.setTotalDays(leaveRequest.getTotalDays());
-        dto.setReason(leaveRequest.getReason());
-        return dto;
     }
-}

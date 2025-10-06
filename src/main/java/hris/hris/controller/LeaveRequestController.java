@@ -65,20 +65,15 @@ public class LeaveRequestController {
 
             LeaveRequest leaveRequest = leaveRequestService.createLeaveRequest(employeeId, requestDto);
 
-            // Get remaining balance after submission
-            Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new RuntimeException("Employee not found"));
-            int remainingBalance = leaveRequestService.getAvailableLeaveBalance(employee, leaveRequest.getLeaveType());
-
-            // Create optimized response DTO
-            LeaveRequestResponseDto responseDto = LeaveRequestResponseDto.fromLeaveRequest(leaveRequest, remainingBalance);
+            // Create response DTO - remaining balance is already calculated in the entity
+            LeaveRequestResponseDto responseDto = LeaveRequestResponseDto.fromLeaveRequest(leaveRequest, null);
 
             return ResponseEntity.status(201).body(ApiResponse.success(responseDto, "Leave request submitted successfully"));
 
         } catch (Exception e) {
             log.error("Create leave request failed", e);
             String errorMessage = e.getMessage() != null ? e.getMessage() : "Unknown error occurred";
-            return ResponseEntity.badRequest().body(ApiResponse.error(errorMessage));
+            return ResponseEntity.badRequest().body(ApiResponse.error(errorMessage, 400));
         }
     }
 
@@ -196,7 +191,7 @@ public class LeaveRequestController {
         } catch (Exception e) {
             log.error("Get current leave failed", e);
             String errorMessage = e.getMessage() != null ? e.getMessage() : "Failed to get current leave";
-            return ResponseEntity.badRequest().body(ApiResponse.error(errorMessage));
+            return ResponseEntity.badRequest().body(ApiResponse.error(errorMessage, 400));
         }
     }
 
@@ -239,16 +234,23 @@ public class LeaveRequestController {
     @PreAuthorize("hasRole('SUPERVISOR')")
     public ResponseEntity<?> rejectLeaveRequest(@RequestHeader(value = "Authorization", required = false) String token,
                                                @PathVariable UUID uuid) {
-        Long supervisorId = getEmployeeIdFromRequest(token);
+        try {
+            Long supervisorId = getEmployeeIdFromRequest(token);
 
-        LeaveRequest rejectedRequest = leaveRequestService.rejectLeaveRequest(uuid, supervisorId);
+            LeaveRequest rejectedRequest = leaveRequestService.rejectLeaveRequest(uuid, supervisorId);
 
-        // Convert to DTO for consistent response
-        Employee employee = rejectedRequest.getEmployee();
-        int remainingBalance = leaveRequestService.getAvailableLeaveBalance(employee, rejectedRequest.getLeaveType());
-        LeaveRequestResponseDto responseDto = LeaveRequestResponseDto.fromLeaveRequest(rejectedRequest, remainingBalance);
+            // Convert to DTO for consistent response
+            Employee employee = rejectedRequest.getEmployee();
+            int remainingBalance = leaveRequestService.getAvailableLeaveBalance(employee, rejectedRequest.getLeaveType());
+            LeaveRequestResponseDto responseDto = LeaveRequestResponseDto.fromLeaveRequest(rejectedRequest, remainingBalance);
 
-        return ResponseEntity.ok(ApiResponse.success(responseDto, "Leave request rejected successfully"));
+            return ResponseEntity.ok(ApiResponse.success(responseDto, "Leave request rejected successfully"));
+
+        } catch (Exception e) {
+            log.error("Reject leave request failed", e);
+            String errorMessage = e.getMessage() != null ? e.getMessage() : "Failed to reject leave request";
+            return ResponseEntity.badRequest().body(ApiResponse.error(errorMessage, 400));
+        }
     }
 
     @GetMapping("/balance")
