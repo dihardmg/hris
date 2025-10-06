@@ -99,7 +99,7 @@ class BusinessTravelControllerIntegrationTest {
     @Test
     void createBusinessTravelRequest_WithValidData_ShouldReturnSuccess() throws Exception {
         BusinessTravelRequestDto request = new BusinessTravelRequestDto();
-        request.setCity("Jakarta, Indonesia");
+        request.setCityId(1L); // Assuming Jakarta city has ID 1
         request.setStartDate(LocalDate.now().plusDays(7));
         request.setEndDate(LocalDate.now().plusDays(10));
         request.setReason("Client meeting and project discussion");
@@ -110,14 +110,14 @@ class BusinessTravelControllerIntegrationTest {
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Business travel request submitted successfully"))
-                .andExpect(jsonPath("$.travelRequest.city").value("Jakarta, Indonesia"))
+                .andExpect(jsonPath("$.travelRequest.cityName").value("Jakarta"))
                 .andExpect(jsonPath("$.travelRequest.totalDays").value(4));
     }
 
     @Test
     void createBusinessTravelRequest_WithInvalidDateRange_ShouldReturnBadRequest() throws Exception {
         BusinessTravelRequestDto request = new BusinessTravelRequestDto();
-        request.setCity("Jakarta, Indonesia");
+        request.setCityId(1L); // Assuming Jakarta city has ID 1
         request.setStartDate(LocalDate.now().plusDays(10));
         request.setEndDate(LocalDate.now().plusDays(7));
         request.setReason("Invalid date range");
@@ -132,7 +132,7 @@ class BusinessTravelControllerIntegrationTest {
     @Test
     void createBusinessTravelRequest_WithPastDate_ShouldReturnBadRequest() throws Exception {
         BusinessTravelRequestDto request = new BusinessTravelRequestDto();
-        request.setCity("Jakarta, Indonesia");
+        request.setCityId(1L); // Assuming Jakarta city has ID 1
         request.setStartDate(LocalDate.now().minusDays(1));
         request.setEndDate(LocalDate.now().plusDays(1));
         request.setReason("Past date request");
@@ -161,7 +161,7 @@ class BusinessTravelControllerIntegrationTest {
     @Test
     void createBusinessTravelRequest_WithInvalidToken_ShouldReturnUnauthorized() throws Exception {
         BusinessTravelRequestDto request = new BusinessTravelRequestDto();
-        request.setCity("Jakarta, Indonesia");
+        request.setCityId(1L); // Assuming Jakarta city has ID 1
         request.setStartDate(LocalDate.now().plusDays(7));
         request.setEndDate(LocalDate.now().plusDays(10));
         request.setReason("Invalid token request");
@@ -176,7 +176,7 @@ class BusinessTravelControllerIntegrationTest {
     @Test
     void createBusinessTravelRequest_WithMissingToken_ShouldReturnUnauthorized() throws Exception {
         BusinessTravelRequestDto request = new BusinessTravelRequestDto();
-        request.setCity("Jakarta, Indonesia");
+        request.setCityId(1L); // Assuming Jakarta city has ID 1
         request.setStartDate(LocalDate.now().plusDays(7));
         request.setEndDate(LocalDate.now().plusDays(10));
         request.setReason("No token request");
@@ -191,7 +191,7 @@ class BusinessTravelControllerIntegrationTest {
     void getMyBusinessTravelRequests_WithValidToken_ShouldReturnPaginatedRequests() throws Exception {
         // First create a travel request
         BusinessTravelRequestDto request = new BusinessTravelRequestDto();
-        request.setCity("Jakarta, Indonesia");
+        request.setCityId(1L); // Assuming Jakarta city has ID 1
         request.setStartDate(LocalDate.now().plusDays(7));
         request.setEndDate(LocalDate.now().plusDays(10));
         request.setReason("Test travel");
@@ -229,7 +229,7 @@ class BusinessTravelControllerIntegrationTest {
                 .header("Authorization", employeeAuthToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new BusinessTravelRequestDto() {{
-                    setCity("Jakarta, Indonesia");
+                    setCityId(1L); // Assuming Jakarta city has ID 1
                     setStartDate(LocalDate.now().plusDays(7));
                     setEndDate(LocalDate.now().plusDays(10));
                     setReason("Test travel by UUID");
@@ -245,7 +245,7 @@ class BusinessTravelControllerIntegrationTest {
         mockMvc.perform(get("/api/business-travel/request/" + uuid)
                 .header("Authorization", employeeAuthToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.city").value("Jakarta, Indonesia"))
+                .andExpect(jsonPath("$.cityName").value("Jakarta"))
                 .andExpect(jsonPath("$.uuid").value(uuid));
     }
 
@@ -281,7 +281,7 @@ class BusinessTravelControllerIntegrationTest {
     @Test
     void createBusinessTravelRequest_OneDayTrip_ShouldCalculateOneDay() throws Exception {
         BusinessTravelRequestDto request = new BusinessTravelRequestDto();
-        request.setCity("Surabaya, Indonesia");
+        request.setCityId(2L); // Assuming Surabaya city has ID 2
         request.setStartDate(LocalDate.now().plusDays(7));
         request.setEndDate(LocalDate.now().plusDays(7)); // Same day
         request.setReason("One day business meeting");
@@ -297,7 +297,7 @@ class BusinessTravelControllerIntegrationTest {
     @Test
     void createBusinessTravelRequest_MultiDayTrip_ShouldCalculateCorrectDays() throws Exception {
         BusinessTravelRequestDto request = new BusinessTravelRequestDto();
-        request.setCity("Singapore");
+        request.setCityId(3L); // Assuming Singapore city has ID 3
         request.setStartDate(LocalDate.now().plusDays(7));
         request.setEndDate(LocalDate.now().plusDays(10)); // 4 days total
         request.setReason("International conference");
@@ -308,5 +308,35 @@ class BusinessTravelControllerIntegrationTest {
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.travelRequest.totalDays").value(4));
+    }
+
+    @Test
+    void getCitiesDropdown_ShouldReturnListOfCities() throws Exception {
+        mockMvc.perform(get("/api/business-travel/cities")
+                .header("Authorization", employeeAuthToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[0].id").exists())
+                .andExpect(jsonPath("$[0].cityCode").exists())
+                .andExpect(jsonPath("$[0].cityName").exists())
+                .andExpect(jsonPath("$[0].provinceName").exists())
+                .andExpect(jsonPath("$[0].displayText").exists());
+    }
+
+    @Test
+    void getCitiesDropdownSearch_ShouldReturnFilteredCities() throws Exception {
+        mockMvc.perform(get("/api/business-travel/cities")
+                .param("search", "Jak")
+                .header("Authorization", employeeAuthToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[?(@.cityName contains 'Jak')]").exists());
+    }
+
+    @Test
+    void getCitiesDropdown_WithInvalidToken_ShouldReturnUnauthorized() throws Exception {
+        mockMvc.perform(get("/api/business-travel/cities")
+                .header("Authorization", "Bearer invalid.token"))
+                .andExpect(status().isUnauthorized());
     }
 }

@@ -11,16 +11,15 @@
 @baseUrl = http://{{hostname}}
 
 # --- AUTHENTICATION TOKENS (Update after login) ---
-@token = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJtY3JkaWtAZ21haWwuY29tIiwiZW1wbG95ZWVJZCI6NDE0NiwiZW1wbG95ZWVDb2RlIjoiRU1QNjcxMzkiLCJ0aW1lem9uZSI6IkFzaWEvSmFrYXJ0YSIsImlhdCI6MTc1OTU5NDA2NywiZXhwIjoxNzU5NjgwNDY3fQ.fXc51OKMLu5nFm5zUl0QSa-EtU9W2J-3ybao7nM1HDa0T4bEKlzzD3ChbAGRXKFJ
-
+@token =eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJtY3JkaWtAZ21haWwuY29tIiwiZW1wbG95ZWVJZCI6NDE0NiwiZW1wbG95ZWVDb2RlIjoiRU1QNjcxMzkiLCJ0aW1lem9uZSI6IkFzaWEvSmFrYXJ0YSIsImlhdCI6MTc1OTcyNTYxMywiZXhwIjoxNzU5ODEyMDEzfQ.ucT8cjX0pZ2uazI4h57rHxrYaVUpaLLN6eYIEJgyIhw_JZvggAWNNtR88CIH07LD
 @adminToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-@supervisorToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
+@supervisorToken = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJzdXBlcnZpc29yQGhyaXMuY29tIiwiZW1wbG95ZWVJZCI6MywiZW1wbG95ZWVDb2RlIjoiU1VQMDAxIiwidGltZXpvbmUiOiJBc2lhL0pha2FydGEiLCJpYXQiOjE3NTk3MjU5ODUsImV4cCI6MTc1OTgxMjM4NX0.GTZNeYi1tRKmkcaqfztfCVbN5xL9zwMTpyHfBs7IDO9OpCNbmVfujP-WQ1ph2Zsy
 # --- DYNAMIC VARIABLES (Update after creating resources) ---
 @employeeId = 1
 @attendanceUuid = 550e8400-e29b-41d4-a716-446655440000
 @leaveRequestUuid = b350343f-ab94-4e37-8dd8-c25604942d52
-@businessTravelUuid = 46bcf50a-cfc5-4f53-910d-5f8f96670d6f
+@businessTravelUuid = 4d5d4101-6fbe-408e-b473-884b620d31e6
 @passwordResetToken = your-reset-token-here
 
 ### =====================================================
@@ -340,7 +339,7 @@ Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "leaveType": "SICK",
+  "leaveType": "ANNUAL_LEAVE",
   "startDate": "2025-11-15",
   "endDate": "2025-11-15",
   "reason": "Medical appointment and recovery"
@@ -456,15 +455,136 @@ Authorization: Bearer {{supervisorToken}}
 ### 5. BUSINESS TRAVEL MANAGEMENT ENDPOINTS
 ### =====================================================
 
+### =====================================================
+### 5.1 BUSINESS TRAVEL CITY DROPDOWN ENDPOINTS
+### =====================================================
+
+### @name getBusinessTravelCitiesDropdown
+GET {{baseUrl}}/api/business-travel/cities
+Authorization: Bearer {{token}}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ Business travel cities dropdown retrieved successfully!");
+    client.log("Total cities: " + response.body.data.length);
+    if (response.body.data.length > 0) {
+      client.log("Sample city: " + response.body.data[0].displayText);
+      client.global.set("businessTravelCityId", response.body.data[0].id);
+    }
+  } else {
+    client.log("❌ Business travel cities dropdown retrieval failed: " + response.body.message);
+  }
+%}
+
+### @name searchBusinessTravelCities
+GET {{baseUrl}}/api/business-travel/cities?search=Jakarta
+Authorization: Bearer {{token}}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ Business travel city search completed!");
+    client.log("Found cities: " + response.body.data.length);
+    if (response.body.data.length > 0) {
+      client.log("Search results: " + JSON.stringify(response.body.data));
+    }
+  } else {
+    client.log("❌ Business travel city search failed: " + response.body.message);
+  }
+%}
+
+### @name searchBusinessTravelCitiesByProvince
+GET {{baseUrl}}/api/business-travel/cities?page=0&size=37
+Authorization: Bearer {{token}}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ Business travel cities by province search completed!");
+    client.log("Found cities in Jawa: " + response.body.data.length);
+  } else {
+    client.log("❌ Business travel cities by province search failed: " + response.body.message);
+  }
+%}
+
+### @name getBusinessTravelCitiesDropdownUnauthorized
+GET {{baseUrl}}/api/business-travel/cities
+
+### @name getBusinessTravelCitiesDropdownInvalidToken
+GET {{baseUrl}}/api/business-travel/cities
+Authorization: Bearer invalid-token-here
+
+### =====================================================
+### 5.2 GENERAL CITY MANAGEMENT ENDPOINTS
+### =====================================================
+
+### @name getAllCitiesForDropdown
+GET {{baseUrl}}/api/cities/dropdown
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ Cities dropdown retrieved successfully!");
+    client.log("Total cities: " + response.body.data.length);
+    if (response.body.data.length > 0) {
+      client.log("Sample city: " + response.body.data[0].displayName);
+      client.global.set("cityId", response.body.data[0].id);
+    }
+  } else {
+    client.log("❌ Cities dropdown retrieval failed: " + response.body.message);
+  }
+%}
+
+### @name searchCities
+GET {{baseUrl}}/api/cities/dropdown?search=Jakarta
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ City search completed!");
+    client.log("Found cities: " + response.body.data.length);
+  } else {
+    client.log("❌ City search failed: " + response.body.message);
+  }
+%}
+
+### @name getCitiesByProvince
+GET {{baseUrl}}/api/cities/dropdown?province=Jawa Barat
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ Cities by province retrieved!");
+    client.log("Cities in Jawa Barat: " + response.body.data.length);
+  } else {
+    client.log("❌ Cities by province retrieval failed: " + response.body.message);
+  }
+%}
+
+### @name getAllCitiesPaginated
+GET {{baseUrl}}/api/cities?page=0&size=5
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ Paginated cities retrieved!");
+    client.log("Current page: " + response.body.data.currentPage);
+    client.log("Total elements: " + response.body.data.totalElements);
+  } else {
+    client.log("❌ Paginated cities retrieval failed: " + response.body.message);
+  }
+%}
+
+### @name getCityById
+GET {{baseUrl}}/api/cities/{{cityId}}
+
+### =====================================================
+### 5.3 BUSINESS TRAVEL REQUEST ENDPOINTS
+### =====================================================
+
 ### @name submitBusinessTravelRequest
 POST {{baseUrl}}/api/business-travel/request
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "city": "Singapore",
-  "startDate": "2025-11-10",
-  "endDate": "2025-11-12",
+  "cityId": 1,
+  "startDate": "2025-11-12",
+  "endDate": "2025-11-13",
   "reason": "Client meeting and project discussion"
 }
 
@@ -474,6 +594,7 @@ Authorization: Bearer {{token}}
     client.log("✅ Business travel request submitted!");
     client.log("UUID: " + response.body.data.uuid);
     client.log("Total Days: " + response.body.data.totalDays);
+    client.log("City: " + response.body.data.cityDisplayName);
   } else {
     client.log("❌ Business travel request submission failed: " + response.body.message);
   }
@@ -485,7 +606,7 @@ Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "city": "Bandung",
+  "cityId": 2,
   "startDate": "2025-11-20",
   "endDate": "2025-11-20",
   "reason": "One-day business meeting"
@@ -497,7 +618,7 @@ Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "city": "Surabaya",
+  "cityId": 3,
   "startDate": "2025-12-01",
   "endDate": "2025-12-05",
   "reason": "Conference and networking"
@@ -509,10 +630,22 @@ Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "city": "Jakarta",
+  "cityId": 1,
   "startDate": "2025-12-15",
   "endDate": "2025-12-10",
   "reason": "Invalid date range"
+}
+
+### @name submitBusinessTravelWithInvalidCity
+POST {{baseUrl}}/api/business-travel/request
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "cityId": 8,
+  "startDate": "2025-12-20",
+  "endDate": "2025-12-22",
+  "reason": "Testing invalid city"
 }
 
 ### @name getMyBusinessTravelRequests
@@ -532,7 +665,7 @@ GET {{baseUrl}}/api/business-travel/request/{{businessTravelUuid}}
 Authorization: Bearer {{supervisorToken}}
 
 ### @name getNonExistentBusinessTravelRequestByUuid
-GET {{baseUrl}}/api/business-travel/request/550e8400-e29b-41d4-a716-446655449999
+GET {{baseUrl}}/api/business-travel/request/4d5d4101-6fbe-408e-b473-884b620d31e6
 Authorization: Bearer {{token}}
 
 ### @name getCurrentBusinessTravel
@@ -557,7 +690,7 @@ Authorization: Bearer {{supervisorToken}}
 %}
 
 ### @name rejectBusinessTravelRequest
-POST {{baseUrl}}/api/business-travel/supervisor/reject/{{businessTravelUuid}}
+POST {{baseUrl}}/api/business-travel/supervisor/reject/8b4cbaa5-8561-4a38-9625-dc86cb1f6fdb
 Authorization: Bearer {{supervisorToken}}
 
 > {%
@@ -802,7 +935,7 @@ Authorization: Bearer {{supervisorToken}}
 
 ### @name employeeAccessSupervisorEndpoint
 GET {{baseUrl}}/api/leave/supervisor/pending
-Authorization: Bearer {{token}}
+Authorization: Bearer {{supervisorToken}}
 
 ### @name adminAccessAllEndpoints
 GET {{baseUrl}}/api/leave/supervisor/pending
@@ -830,7 +963,7 @@ Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "city": "",
+  "cityId": null,
   "startDate": "",
   "endDate": "",
   "reason": ""
@@ -862,7 +995,7 @@ Authorization: Bearer {{token}}
 # --- WORKFLOW 1: COMPLETE EMPLOYEE DAILY WORKFLOW ---
 # 1. loginEmployee → clockIn → getTodayAttendance → clockOut → getAttendanceHistory
 # 2. submitAnnualLeave → getMyLeaveRequests → getCurrentLeave
-# 3. submitBusinessTravelRequest → getMyBusinessTravelRequests → getCurrentBusinessTravel
+# 3. getBusinessTravelCitiesDropdown → submitBusinessTravelRequest → getMyBusinessTravelRequests → getCurrentBusinessTravel
 
 # --- WORKFLOW 2: SUPERVISOR APPROVAL WORKFLOW ---
 # 1. loginSupervisor → getPendingLeaveRequests → approveLeaveRequest

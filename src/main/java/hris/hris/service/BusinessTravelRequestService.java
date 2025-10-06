@@ -2,9 +2,11 @@ package hris.hris.service;
 
 import hris.hris.dto.BusinessTravelRequestDto;
 import hris.hris.model.BusinessTravelRequest;
+import hris.hris.model.City;
 import hris.hris.model.Employee;
 import hris.hris.model.LeaveRequest;
 import hris.hris.repository.BusinessTravelRequestRepository;
+import hris.hris.repository.CityRepository;
 import hris.hris.repository.EmployeeRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +28,9 @@ public class BusinessTravelRequestService {
     private BusinessTravelRequestRepository businessTravelRequestRepository;
 
     @Autowired
+    private CityRepository cityRepository;
+
+    @Autowired
     private EmployeeRepository employeeRepository;
 
     @Transactional
@@ -42,9 +47,26 @@ public class BusinessTravelRequestService {
             throw new RuntimeException("You have approved leave during the requested travel period");
         }
 
+        // Check for duplicate business travel request with same dates and employee
+        Optional<BusinessTravelRequest> duplicateRequest = businessTravelRequestRepository
+            .findDuplicateRequest(employeeId, requestDto.getStartDate(), requestDto.getEndDate());
+        if (duplicateRequest.isPresent()) {
+            throw new RuntimeException("You already have a business travel request for the same dates. " +
+                "Request ID: " + duplicateRequest.get().getUuid() + " with status: " +
+                duplicateRequest.get().getStatus());
+        }
+
+        // Validate and fetch city
+        City city = cityRepository.findById(requestDto.getCityId())
+            .orElseThrow(() -> new RuntimeException("City not found"));
+
+        if (!city.getIsActive()) {
+            throw new RuntimeException("Selected city is not active");
+        }
+
         BusinessTravelRequest travelRequest = new BusinessTravelRequest();
         travelRequest.setEmployee(employee);
-        travelRequest.setCity(requestDto.getCity());
+        travelRequest.setCity(city);
         travelRequest.setStartDate(requestDto.getStartDate());
         travelRequest.setEndDate(requestDto.getEndDate());
         travelRequest.setReason(requestDto.getReason());
@@ -56,7 +78,7 @@ public class BusinessTravelRequestService {
         BusinessTravelRequest savedRequest = businessTravelRequestRepository.save(travelRequest);
         // Updated for audit workflow testing
         log.info("Business travel request created for employee {} to {} from {} to {}",
-                employee.getEmployeeId(), requestDto.getCity(),
+                employee.getEmployeeId(), city.getCityName() + ", " + city.getProvinceName(),
                 requestDto.getStartDate(), requestDto.getEndDate());
 
         return savedRequest;
@@ -136,8 +158,8 @@ public class BusinessTravelRequestService {
     }
 
     @Transactional(readOnly = true)
-    public List<BusinessTravelRequest> getPendingRequestsForSupervisor(Long supervisorId) {
-        return businessTravelRequestRepository.findPendingRequestsBySupervisor(supervisorId);
+    public Page<BusinessTravelRequest> getPendingRequestsForSupervisor(Long supervisorId, Pageable pageable) {
+        return businessTravelRequestRepository.findPendingRequestsBySupervisor(supervisorId, pageable);
     }
 
     @Transactional(readOnly = true)

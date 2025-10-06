@@ -2,9 +2,11 @@ package hris.hris.service;
 
 import hris.hris.dto.BusinessTravelRequestDto;
 import hris.hris.model.BusinessTravelRequest;
+import hris.hris.model.City;
 import hris.hris.model.Employee;
 import hris.hris.model.LeaveRequest;
 import hris.hris.repository.BusinessTravelRequestRepository;
+import hris.hris.repository.CityRepository;
 import hris.hris.repository.EmployeeRepository;
 import hris.hris.repository.LeaveRequestRepository;
 import org.junit.jupiter.api.Test;
@@ -37,6 +39,9 @@ class BusinessTravelRequestServiceTest {
     private BusinessTravelRequestRepository businessTravelRequestRepository;
 
     @Mock
+    private CityRepository cityRepository;
+
+    @Mock
     private EmployeeRepository employeeRepository;
 
     @Mock
@@ -47,6 +52,7 @@ class BusinessTravelRequestServiceTest {
 
     private Employee testEmployee;
     private Employee testSupervisor;
+    private City testCity;
     private BusinessTravelRequestDto testRequestDto;
     private BusinessTravelRequest testTravelRequest;
     private LeaveRequest testLeaveRequest;
@@ -71,9 +77,17 @@ class BusinessTravelRequestServiceTest {
         testSupervisor.setLastName("Smith");
         testSupervisor.setEmail("jane.smith@example.com");
 
+        // Setup test city
+        testCity = new City();
+        testCity.setId(1L);
+        testCity.setCityCode("JKT");
+        testCity.setCityName("Jakarta");
+        testCity.setProvinceName("DKI Jakarta");
+        testCity.setIsActive(true);
+
         // Setup test request DTO
         testRequestDto = new BusinessTravelRequestDto();
-        testRequestDto.setCity("Jakarta");
+        testRequestDto.setCityId(1L);
         testRequestDto.setStartDate(LocalDate.of(2024, 1, 15));
         testRequestDto.setEndDate(LocalDate.of(2024, 1, 17));
         testRequestDto.setReason("Client meeting");
@@ -84,7 +98,8 @@ class BusinessTravelRequestServiceTest {
         testTravelRequest.setUuid(testUuid);
         testTravelRequest.setEmployee(testEmployee);
         testTravelRequest.setEmployeeId(1L);
-        testTravelRequest.setCity("Jakarta");
+        testTravelRequest.setCity(testCity);
+        testTravelRequest.setCityId(1L);
         testTravelRequest.setStartDate(LocalDate.of(2024, 1, 15));
         testTravelRequest.setEndDate(LocalDate.of(2024, 1, 17));
         testTravelRequest.setTotalDays(3);
@@ -109,6 +124,7 @@ class BusinessTravelRequestServiceTest {
         void shouldCreateBusinessTravelRequestSuccessfully() {
             // Given
             when(employeeRepository.findById(1L)).thenReturn(Optional.of(testEmployee));
+            when(cityRepository.findById(1L)).thenReturn(Optional.of(testCity));
             when(leaveRequestRepository.findCurrentLeave(1L, LocalDate.of(2024, 1, 15))).thenReturn(Optional.empty());
             when(businessTravelRequestRepository.save(any(BusinessTravelRequest.class))).thenReturn(testTravelRequest);
 
@@ -117,15 +133,41 @@ class BusinessTravelRequestServiceTest {
 
             // Then
             assertNotNull(result, "Result should not be null");
-            assertEquals(testTravelRequest.getCity(), result.getCity(), "City should match");
+            assertEquals(testCity, result.getCity(), "City should match");
+            assertEquals(testTravelRequest.getCityId(), result.getCityId(), "City ID should match");
             assertEquals(testTravelRequest.getStartDate(), result.getStartDate(), "Start date should match");
             assertEquals(testTravelRequest.getEndDate(), result.getEndDate(), "End date should match");
             assertEquals(BusinessTravelRequest.RequestStatus.PENDING, result.getStatus(), "Status should be PENDING");
             assertEquals(testEmployee, result.getCreatedBy(), "Created by should be set");
 
             verify(employeeRepository).findById(1L);
+            verify(cityRepository).findById(1L);
             verify(leaveRequestRepository).findCurrentLeave(1L, LocalDate.of(2024, 1, 15));
             verify(businessTravelRequestRepository).save(any(BusinessTravelRequest.class));
+        }
+
+        @Test
+        @DisplayName("Should throw exception when city not found")
+        void shouldThrowExceptionWhenCityNotFound() {
+            // Given
+            when(employeeRepository.findById(1L)).thenReturn(Optional.of(testEmployee));
+            when(cityRepository.findById(999L)).thenReturn(Optional.empty());
+
+            // Update test request to use non-existent city
+            testRequestDto.setCityId(999L);
+
+            // When & Then
+            RuntimeException exception = assertThrows(
+                RuntimeException.class,
+                () -> businessTravelRequestService.createBusinessTravelRequest(1L, testRequestDto)
+            );
+
+            assertEquals("City not found", exception.getMessage(), "Exception message should match");
+
+            verify(employeeRepository).findById(1L);
+            verify(cityRepository).findById(999L);
+            verify(leaveRequestRepository, never()).findCurrentLeave(anyLong(), any());
+            verify(businessTravelRequestRepository, never()).save(any());
         }
 
         @Test
@@ -143,6 +185,7 @@ class BusinessTravelRequestServiceTest {
             assertEquals("Employee not found", exception.getMessage(), "Exception message should match");
 
             verify(employeeRepository).findById(999L);
+            verify(cityRepository, never()).findById(anyLong());
             verify(leaveRequestRepository, never()).findCurrentLeave(anyLong(), any());
             verify(businessTravelRequestRepository, never()).save(any());
         }
@@ -403,22 +446,24 @@ class BusinessTravelRequestServiceTest {
         }
 
         @Test
-        @DisplayName("Should get pending requests for supervisor")
+        @DisplayName("Should get pending requests for supervisor with pagination")
         void shouldGetPendingRequestsForSupervisor() {
             // Given
+            Pageable pageable = PageRequest.of(0, 10);
             List<BusinessTravelRequest> expectedRequests = List.of(testTravelRequest);
-            when(businessTravelRequestRepository.findPendingRequestsBySupervisor(2L))
-                .thenReturn(expectedRequests);
+            Page<BusinessTravelRequest> expectedPage = new PageImpl<>(expectedRequests, pageable, 1);
+            when(businessTravelRequestRepository.findPendingRequestsBySupervisor(2L, pageable))
+                .thenReturn(expectedPage);
 
             // When
-            List<BusinessTravelRequest> result = businessTravelRequestService.getPendingRequestsForSupervisor(2L);
+            Page<BusinessTravelRequest> result = businessTravelRequestService.getPendingRequestsForSupervisor(2L, pageable);
 
             // Then
             assertNotNull(result, "Result should not be null");
-            assertEquals(1, result.size(), "Should return 1 request");
-            assertEquals(testTravelRequest.getUuid(), result.get(0).getUuid(), "UUID should match");
+            assertEquals(1, result.getContent().size(), "Should return 1 request");
+            assertEquals(testTravelRequest.getUuid(), result.getContent().get(0).getUuid(), "UUID should match");
 
-            verify(businessTravelRequestRepository).findPendingRequestsBySupervisor(2L);
+            verify(businessTravelRequestRepository).findPendingRequestsBySupervisor(2L, pageable);
         }
 
         @Test

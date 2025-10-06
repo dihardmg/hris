@@ -2,6 +2,7 @@ package hris.hris.dto;
 
 import hris.hris.model.BusinessTravelRequest;
 import hris.hris.model.Employee;
+import hris.hris.model.City;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,6 +22,7 @@ class BusinessTravelRequestResponseDtoTest {
     private Employee mockEmployee;
     private Employee mockCreatedBy;
     private Employee mockUpdatedBy;
+    private City mockCity;
 
     @BeforeEach
     void setUp() {
@@ -50,12 +52,21 @@ class BusinessTravelRequestResponseDtoTest {
         mockUpdatedBy.setLastName("Wilson");
         mockUpdatedBy.setEmail("bob.wilson@example.com");
 
+        // Setup mock city
+        mockCity = new City();
+        mockCity.setId(1L);
+        mockCity.setCityCode("JKT");
+        mockCity.setCityName("Jakarta");
+        mockCity.setProvinceName("DKI Jakarta");
+        mockCity.setIsActive(true);
+
         // Setup mock business travel request
         mockRequest = new BusinessTravelRequest();
         mockRequest.setUuid(UUID.randomUUID());
         mockRequest.setEmployeeId(1L);
         mockRequest.setEmployee(mockEmployee);
-        mockRequest.setCity("Jakarta");
+        mockRequest.setCity(mockCity);
+        mockRequest.setCityId(1L);
         mockRequest.setStartDate(LocalDate.of(2024, 1, 15));
         mockRequest.setEndDate(LocalDate.of(2024, 1, 17));
         mockRequest.setTotalDays(3);
@@ -104,11 +115,19 @@ class BusinessTravelRequestResponseDtoTest {
         @Test
         @DisplayName("Should set and get city correctly")
         void shouldSetAndGetCity() {
-            String expectedCity = "Surabaya";
+            CityResponseDto expectedCity = new CityResponseDto();
+            expectedCity.setId(2L);
+            expectedCity.setCityName("Surabaya");
+            expectedCity.setProvinceName("Jawa Timur");
+            expectedCity.setCityDisplayName("Surabaya, Jawa Timur");
 
             responseDto.setCity(expectedCity);
 
             assertEquals(expectedCity, responseDto.getCity(), "City should be set and retrieved correctly");
+            assertEquals(2L, responseDto.getCity().getId(), "City ID should match");
+            assertEquals("Surabaya", responseDto.getCity().getCityName(), "City name should match");
+            assertEquals("Jawa Timur", responseDto.getCity().getProvinceName(), "Province name should match");
+            assertEquals("Surabaya, Jawa Timur", responseDto.getCity().getCityDisplayName(), "City display name should match");
         }
 
         @Test
@@ -227,7 +246,11 @@ class BusinessTravelRequestResponseDtoTest {
             assertEquals(mockRequest.getUuid(), result.getUuid(), "UUID should match");
             assertEquals(mockRequest.getEmployeeId(), result.getEmployeeId(), "Employee ID should match");
             assertEquals("John Doe", result.getEmployeeName(), "Employee name should be concatenated correctly");
-            assertEquals(mockRequest.getCity(), result.getCity(), "City should match");
+            assertNotNull(result.getCity(), "City should not be null");
+            assertEquals(mockRequest.getCity().getId(), result.getCity().getId(), "City ID should match");
+            assertEquals(mockRequest.getCity().getCityName(), result.getCity().getCityName(), "City name should match");
+            assertEquals(mockRequest.getCity().getProvinceName(), result.getCity().getProvinceName(), "Province name should match");
+            assertEquals(mockRequest.getCity().getCityName() + ", " + mockRequest.getCity().getProvinceName(), result.getCity().getCityDisplayName(), "City display name should match");
             assertEquals(mockRequest.getStartDate().toString(), result.getStartDate(), "Start date should match");
             assertEquals(mockRequest.getEndDate().toString(), result.getEndDate(), "End date should match");
             assertEquals(mockRequest.getTotalDays(), result.getTotalDays(), "Total days should match");
@@ -311,7 +334,9 @@ class BusinessTravelRequestResponseDtoTest {
 
             // Other fields should still be populated
             assertEquals(mockRequest.getUuid(), result.getUuid(), "UUID should still match");
-            assertEquals(mockRequest.getCity(), result.getCity(), "City should still match");
+            assertNotNull(result.getCity(), "City should still not be null");
+            assertEquals(mockRequest.getCity().getId(), result.getCity().getId(), "City ID should still match");
+            assertEquals(mockRequest.getCity().getCityName(), result.getCity().getCityName(), "City name should still match");
         }
     }
 
@@ -419,10 +444,16 @@ class BusinessTravelRequestResponseDtoTest {
         @DisplayName("Should have working toString method")
         void shouldHaveWorkingToString() {
             // Given
+            CityResponseDto city = new CityResponseDto();
+            city.setId(1L);
+            city.setCityName("Jakarta");
+            city.setProvinceName("DKI Jakarta");
+            city.setCityDisplayName("Jakarta, DKI Jakarta");
+
             responseDto.setUuid(UUID.randomUUID());
             responseDto.setEmployeeId(123L);
             responseDto.setEmployeeName("John Doe");
-            responseDto.setCity("Jakarta");
+            responseDto.setCity(city);
             responseDto.setStartDate("2024-01-15");
             responseDto.setEndDate("2024-01-17");
             responseDto.setTotalDays(3);
@@ -455,15 +486,27 @@ class BusinessTravelRequestResponseDtoTest {
             BusinessTravelRequestResponseDto dto2 = new BusinessTravelRequestResponseDto();
             UUID testUuid = UUID.randomUUID();
 
+            CityResponseDto city1 = new CityResponseDto();
+            city1.setId(1L);
+            city1.setCityName("Jakarta");
+            city1.setProvinceName("DKI Jakarta");
+            city1.setCityDisplayName("Jakarta, DKI Jakarta");
+
+            CityResponseDto city2 = new CityResponseDto();
+            city2.setId(1L);
+            city2.setCityName("Jakarta");
+            city2.setProvinceName("DKI Jakarta");
+            city2.setCityDisplayName("Jakarta, DKI Jakarta");
+
             dto1.setUuid(testUuid);
             dto1.setEmployeeId(123L);
             dto1.setEmployeeName("John Doe");
-            dto1.setCity("Jakarta");
+            dto1.setCity(city1);
 
             dto2.setUuid(testUuid);
             dto2.setEmployeeId(123L);
             dto2.setEmployeeName("John Doe");
-            dto2.setCity("Jakarta");
+            dto2.setCity(city2);
 
             // Then
             assertEquals(dto1, dto2, "DTOs with same data should be equal");
@@ -498,15 +541,22 @@ class BusinessTravelRequestResponseDtoTest {
         @Test
         @DisplayName("Should handle empty strings")
         void shouldHandleEmptyStrings() {
+            CityResponseDto city = new CityResponseDto();
+            city.setCityName("");
+            city.setProvinceName("");
+            city.setCityDisplayName("");
+
             responseDto.setEmployeeName("");
-            responseDto.setCity("");
+            responseDto.setCity(city);
             responseDto.setStartDate("");
             responseDto.setEndDate("");
             responseDto.setReason("");
             responseDto.setStatus("");
 
             assertEquals("", responseDto.getEmployeeName(), "Employee name should handle empty string");
-            assertEquals("", responseDto.getCity(), "City should handle empty string");
+            assertEquals("", responseDto.getCity().getCityName(), "City name should handle empty string");
+            assertEquals("", responseDto.getCity().getProvinceName(), "Province name should handle empty string");
+            assertEquals("", responseDto.getCity().getCityDisplayName(), "City display name should handle empty string");
             assertEquals("", responseDto.getStartDate(), "Start date should handle empty string");
             assertEquals("", responseDto.getEndDate(), "End date should handle empty string");
             assertEquals("", responseDto.getReason(), "Reason should handle empty string");

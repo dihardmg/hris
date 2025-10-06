@@ -11,8 +11,8 @@ import java.time.LocalDate;
 @Data
 public class BusinessTravelRequestDto {
 
-    @NotBlank(message = "City is required")
-    private String city;
+    @NotNull(message = "City is required")
+    private Long cityId;
 
     @NotNull(message = "Start date is required")
     @Future(message = "Start date must be in the future")

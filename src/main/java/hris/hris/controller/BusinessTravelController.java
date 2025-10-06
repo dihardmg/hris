@@ -2,10 +2,14 @@ package hris.hris.controller;
 
 import hris.hris.dto.BusinessTravelRequestDto;
 import hris.hris.dto.BusinessTravelRequestResponseDto;
+import hris.hris.dto.CityDropdownDto;
 import hris.hris.dto.PaginatedBusinessTravelRequestResponse;
+import hris.hris.dto.PaginatedCityDropdownResponse;
+import hris.hris.dto.PageInfo;
 import hris.hris.model.BusinessTravelRequest;
 import hris.hris.security.JwtUtil;
 import hris.hris.service.BusinessTravelRequestService;
+import hris.hris.service.CityService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +34,45 @@ public class BusinessTravelController {
     private BusinessTravelRequestService businessTravelRequestService;
 
     @Autowired
+    private CityService cityService;
+
+    @Autowired
     private JwtUtil jwtUtil;
+
+    @GetMapping("/cities")
+    @PreAuthorize("hasRole('EMPLOYEE') or hasRole('SUPERVISOR') or hasRole('HR') or hasRole('ADMIN')")
+    public ResponseEntity<PaginatedCityDropdownResponse> getCitiesDropdown(
+            @RequestHeader("Authorization") String token,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        try {
+            Pageable pageable = PageRequest.of(page, size);
+            Page<CityDropdownDto> citiesPage;
+            if (search != null && !search.trim().isEmpty()) {
+                citiesPage = cityService.searchCities(search.trim(), pageable);
+            } else {
+                citiesPage = cityService.getAllActiveCitiesForDropdown(pageable);
+            }
+
+            PageInfo pageInfo = PageInfo.builder()
+                    .size(citiesPage.getSize())
+                    .total(citiesPage.getTotalElements())
+                    .totalPages(citiesPage.getTotalPages())
+                    .current(citiesPage.getNumber() + 1)
+                    .build();
+
+            PaginatedCityDropdownResponse response = PaginatedCityDropdownResponse.builder()
+                    .cities(citiesPage.getContent())
+                    .page(pageInfo)
+                    .build();
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Get cities dropdown failed", e);
+            return ResponseEntity.badRequest().body(new PaginatedCityDropdownResponse());
+        }
+    }
 
     @PostMapping("/request")
     @PreAuthorize("hasRole('EMPLOYEE')")
@@ -152,22 +194,36 @@ public class BusinessTravelController {
 
     @GetMapping("/supervisor/pending")
     @PreAuthorize("hasRole('SUPERVISOR')")
-    public ResponseEntity<?> getPendingBusinessTravelRequests(@RequestHeader("Authorization") String token) {
+    public ResponseEntity<?> getPendingBusinessTravelRequests(
+            @RequestHeader("Authorization") String token,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
         try {
             Long supervisorId = jwtUtil.getEmployeeIdFromToken(token.substring(7));
+            Pageable pageable = PageRequest.of(page, size);
+            Page<BusinessTravelRequest> pendingRequestsPage = businessTravelRequestService.getPendingRequestsForSupervisor(supervisorId, pageable);
 
-            List<BusinessTravelRequest> pendingRequests = businessTravelRequestService.getPendingRequestsForSupervisor(supervisorId);
-            List<BusinessTravelRequestResponseDto> pendingRequestDtos = pendingRequests.stream()
+            List<BusinessTravelRequestResponseDto> pendingRequestDtos = pendingRequestsPage.getContent().stream()
                 .map(BusinessTravelRequestResponseDto::fromBusinessTravelRequest)
                 .toList();
 
-            return ResponseEntity.ok(pendingRequestDtos);
+            PaginatedBusinessTravelRequestResponse response = PaginatedBusinessTravelRequestResponse.createResponse(
+                pendingRequestDtos,
+                pendingRequestsPage.getSize(),
+                (int) pendingRequestsPage.getTotalElements(),
+                pendingRequestsPage.getTotalPages(),
+                pendingRequestsPage.getNumber() + 1
+            );
+
+            return ResponseEntity.ok(response);
 
         } catch (Exception e) {
             log.error("Get pending business travel requests failed", e);
-            return ResponseEntity.badRequest().body(
-                Map.of("message", "Failed to get pending business travel requests")
+            PaginatedBusinessTravelRequestResponse errorResponse = PaginatedBusinessTravelRequestResponse.createResponse(
+                List.of(), 0, 0, 0, 0
             );
+            return ResponseEntity.badRequest().body(errorResponse);
         }
     }
 

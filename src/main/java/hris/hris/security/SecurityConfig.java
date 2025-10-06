@@ -62,6 +62,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/password-reset/**").permitAll()
                 .requestMatchers("/api/test/**").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
+                .requestMatchers("/api/cities/**").permitAll()
                 .requestMatchers("/h2-console/**").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")

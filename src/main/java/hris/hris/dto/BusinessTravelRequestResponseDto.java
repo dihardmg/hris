@@ -11,7 +11,7 @@ public class BusinessTravelRequestResponseDto {
     private UUID uuid;
     private Long employeeId;
     private String employeeName;
-    private String city;
+    private CityResponseDto city;
     private String startDate;
     private String endDate;
     private Integer totalDays;
@@ -31,7 +31,16 @@ public class BusinessTravelRequestResponseDto {
         } else {
             dto.setEmployeeName(null);
         }
-        dto.setCity(request.getCity());
+        if (request.getCity() != null) {
+            CityResponseDto cityDto = new CityResponseDto();
+            cityDto.setId(request.getCity().getId());
+            cityDto.setCityName(request.getCity().getCityName());
+            cityDto.setProvinceName(request.getCity().getProvinceName());
+            cityDto.setCityDisplayName(request.getCity().getCityName() + ", " + request.getCity().getProvinceName());
+            dto.setCity(cityDto);
+        } else {
+            dto.setCity(null);
+        }
         dto.setStartDate(request.getStartDate().toString());
         dto.setEndDate(request.getEndDate().toString());
         dto.setTotalDays(request.getTotalDays());

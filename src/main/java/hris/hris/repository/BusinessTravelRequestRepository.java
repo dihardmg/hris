@@ -27,8 +27,18 @@ public interface BusinessTravelRequestRepository extends JpaRepository<BusinessT
     @Query("SELECT btr FROM BusinessTravelRequest btr JOIN btr.employee e WHERE e.supervisorId = :supervisorId AND btr.status = 'PENDING'")
     List<BusinessTravelRequest> findPendingRequestsBySupervisor(@Param("supervisorId") Long supervisorId);
 
+    @Query("SELECT btr FROM BusinessTravelRequest btr JOIN btr.employee e WHERE e.supervisorId = :supervisorId AND btr.status = 'PENDING'")
+    Page<BusinessTravelRequest> findPendingRequestsBySupervisor(@Param("supervisorId") Long supervisorId, Pageable pageable);
+
     @Query("SELECT btr FROM BusinessTravelRequest btr WHERE btr.employee.id = :employeeId AND " +
            "btr.status = 'APPROVED' AND btr.startDate <= :currentDate AND btr.endDate >= :currentDate")
     List<BusinessTravelRequest> findCurrentTravel(@Param("employeeId") Long employeeId,
                                                   @Param("currentDate") LocalDate currentDate);
+
+    @Query("SELECT btr FROM BusinessTravelRequest btr WHERE btr.employee.id = :employeeId AND " +
+           "btr.startDate = :startDate AND btr.endDate = :endDate AND " +
+           "btr.status IN ('PENDING', 'APPROVED')")
+    Optional<BusinessTravelRequest> findDuplicateRequest(@Param("employeeId") Long employeeId,
+                                                        @Param("startDate") LocalDate startDate,
+                                                        @Param("endDate") LocalDate endDate);
 }

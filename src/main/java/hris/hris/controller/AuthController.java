@@ -6,6 +6,7 @@ import hris.hris.dto.LoginResponse;
 import hris.hris.exception.RateLimitExceededException;
 import hris.hris.service.AuthenticationService;
 import hris.hris.service.RateLimitingService;
+import java.util.HashMap;
 import java.util.UUID;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -68,27 +69,53 @@ public class AuthController {
     }
 
     @PostMapping("/validate")
-    public ResponseEntity<ApiResponse<Void>> validateToken(@RequestHeader("Authorization") String token) {
-        if (token != null && token.startsWith("Bearer ")) {
-            String jwtToken = token.substring(7);
-            if (authenticationService.validateToken(jwtToken)) {
-                return ResponseEntity.ok(ApiResponse.success("Token is valid"));
-            }
+    public ResponseEntity<?> validateToken(@RequestHeader(value = "Authorization", required = false) String token) {
+        if (token == null || !token.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body(createErrorResponse(
+                401,
+                "Unauthorized",
+                "Missing or invalid authorization header format. Please provide a valid Bearer token.",
+                "/api/auth/validate"
+            ));
         }
-        return ResponseEntity.badRequest().body(ApiResponse.error("Invalid token"));
+
+        String jwtToken = token.substring(7);
+        if (authenticationService.validateToken(jwtToken)) {
+            return ResponseEntity.ok(ApiResponse.success("Token is valid"));
+        }
+
+        return ResponseEntity.status(401).body(createErrorResponse(
+            401,
+            "Unauthorized",
+            "Invalid or expired token. Please authenticate again.",
+            "/api/auth/validate"
+        ));
     }
 
     @GetMapping("/me")
-    public ResponseEntity<ApiResponse<?>> getCurrentUser(@RequestHeader("Authorization") String token) {
-        if (token != null && token.startsWith("Bearer ")) {
-            String jwtToken = token.substring(7);
-            if (authenticationService.validateToken(jwtToken)) {
-                String email = authenticationService.getEmailFromToken(jwtToken);
-                var employee = authenticationService.getCurrentEmployee(email);
-                return ResponseEntity.ok(ApiResponse.success(employee));
-            }
+    public ResponseEntity<?> getCurrentUser(@RequestHeader(value = "Authorization", required = false) String token) {
+        if (token == null || !token.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body(createErrorResponse(
+                401,
+                "Unauthorized",
+                "Missing or invalid authorization header format. Please provide a valid Bearer token.",
+                "/api/auth/me"
+            ));
         }
-        return ResponseEntity.badRequest().body(ApiResponse.error("Invalid token"));
+
+        String jwtToken = token.substring(7);
+        if (authenticationService.validateToken(jwtToken)) {
+            String email = authenticationService.getEmailFromToken(jwtToken);
+            var employee = authenticationService.getCurrentEmployee(email);
+            return ResponseEntity.ok(ApiResponse.success(employee));
+        }
+
+        return ResponseEntity.status(401).body(createErrorResponse(
+            401,
+            "Unauthorized",
+            "Invalid or expired token. Please authenticate again.",
+            "/api/auth/me"
+        ));
     }
 
     @GetMapping("/debug/hash")
@@ -166,5 +193,15 @@ public class AuthController {
         }
 
         return httpServletRequest.getRemoteAddr();
+    }
+
+    private Map<String, Object> createErrorResponse(int status, String error, String message, String path) {
+        Map<String, Object> errorResponse = new HashMap<>();
+        errorResponse.put("timestamp", java.time.LocalDateTime.now().toString());
+        errorResponse.put("status", status);
+        errorResponse.put("error", error);
+        errorResponse.put("message", message);
+        errorResponse.put("path", path);
+        return errorResponse;
     }
 }

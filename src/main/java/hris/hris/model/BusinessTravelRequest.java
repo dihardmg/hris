@@ -32,8 +32,12 @@ public class BusinessTravelRequest {
     @Column(name = "employee_id", insertable = false, updatable = false)
     private Long employeeId;
 
-    @Column(name = "city", nullable = false)
-    private String city;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "city_id", nullable = false)
+    private City city;
+
+    @Column(name = "city_id", insertable = false, updatable = false)
+    private Long cityId;
 
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
