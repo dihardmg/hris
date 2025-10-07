@@ -113,26 +113,6 @@ public class DataMigrationService {
             employee.setHireDate(new Date());
         }
 
-        if (fields.length > 8 && !fields[8].trim().isEmpty()) {
-            try {
-                employee.setAnnualLeaveBalance(Integer.parseInt(fields[8].trim()));
-            } catch (NumberFormatException e) {
-                employee.setAnnualLeaveBalance(12);
-            }
-        } else {
-            employee.setAnnualLeaveBalance(12);
-        }
-
-        if (fields.length > 9 && !fields[9].trim().isEmpty()) {
-            try {
-                employee.setSickLeaveBalance(Integer.parseInt(fields[9].trim()));
-            } catch (NumberFormatException e) {
-                employee.setSickLeaveBalance(10);
-            }
-        } else {
-            employee.setSickLeaveBalance(10);
-        }
-
         employee.setIsActive(true);
 
         return employee;
@@ -161,8 +141,6 @@ public class DataMigrationService {
         admin.setDepartmentId(1L);
         admin.setPositionId(1L);
         admin.setHireDate(new Date());
-        admin.setAnnualLeaveBalance(30);
-        admin.setSickLeaveBalance(15);
         admin.setIsActive(true);
 
         employeeRepository.save(admin);
@@ -175,10 +153,10 @@ public class DataMigrationService {
             List<Employee> employees = employeeRepository.findByIsActiveTrue();
 
             StringBuilder csvContent = new StringBuilder();
-            csvContent.append("FirstName,LastName,Email,PhoneNumber,DepartmentId,PositionId,SupervisorId,HireDate,AnnualLeaveBalance,SickLeaveBalance\n");
+            csvContent.append("FirstName,LastName,Email,PhoneNumber,DepartmentId,PositionId,SupervisorId,HireDate\n");
 
             for (Employee emp : employees) {
-                csvContent.append(String.format("%s,%s,%s,%s,%d,%d,%s,%s,%d,%d\n",
+                csvContent.append(String.format("%s,%s,%s,%s,%d,%d,%s,%s\n",
                     escapeCsv(emp.getFirstName()),
                     escapeCsv(emp.getLastName()),
                     escapeCsv(emp.getEmail()),
@@ -186,9 +164,7 @@ public class DataMigrationService {
                     emp.getDepartmentId(),
                     emp.getPositionId(),
                     emp.getSupervisorId() != null ? emp.getSupervisorId() : "",
-                    emp.getHireDate(),
-                    emp.getAnnualLeaveBalance(),
-                    emp.getSickLeaveBalance()
+                    emp.getHireDate()
                 ));
             }
 

@@ -62,12 +62,7 @@ public class Employee {
     @Enumerated(EnumType.STRING)
     private EmploymentStatus employmentStatus = EmploymentStatus.ACTIVE;
 
-    @Column(name = "annual_leave_balance")
-    private Integer annualLeaveBalance = 12;
-
-    @Column(name = "sick_leave_balance")
-    private Integer sickLeaveBalance = 10;
-
+  
     @Column(nullable = false)
     private Boolean isActive = true;
 

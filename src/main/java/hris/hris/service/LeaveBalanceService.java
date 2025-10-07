@@ -386,14 +386,14 @@ public class LeaveBalanceService {
         if (employee.isPresent()) {
             Employee emp = employee.get();
 
-            // Sick leave
+            // Sick leave - Using default quota since it's no longer tracked in employee table
             LeaveBalanceDto sickLeaveBalance = new LeaveBalanceDto();
             sickLeaveBalance.setEmployeeId(employeeId);
             sickLeaveBalance.setLeaveTypeName("Sick Leave");
             sickLeaveBalance.setLeaveTypeCode("SICK_LEAVE");
-            sickLeaveBalance.setTotalQuota(emp.getSickLeaveBalance());
+            sickLeaveBalance.setTotalQuota(10); // Default sick leave quota
             sickLeaveBalance.setUsedQuota(0); // Not tracked yet
-            sickLeaveBalance.setRemainingQuota(emp.getSickLeaveBalance());
+            sickLeaveBalance.setRemainingQuota(10); // Default sick leave quota
             sickLeaveBalance.setHasBalanceQuota(true);
             balances.add(sickLeaveBalance);
         }

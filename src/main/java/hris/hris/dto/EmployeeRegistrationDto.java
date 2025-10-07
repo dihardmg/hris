@@ -41,8 +41,4 @@ public class EmployeeRegistrationDto {
     private Date hireDate;
 
     private String faceImage;
-
-    private Integer annualLeaveBalance = 12;
-
-    private Integer sickLeaveBalance = 10;
 }

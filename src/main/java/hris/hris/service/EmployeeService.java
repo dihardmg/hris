@@ -48,8 +48,6 @@ public class EmployeeService {
         employee.setPositionId(registrationDto.getPositionId());
         employee.setSupervisorId(registrationDto.getSupervisorId());
         employee.setHireDate(registrationDto.getHireDate());
-        employee.setAnnualLeaveBalance(registrationDto.getAnnualLeaveBalance());
-        employee.setSickLeaveBalance(registrationDto.getSickLeaveBalance());
         employee.setIsActive(true);
 
         if (registrationDto.getFaceImage() != null && !registrationDto.getFaceImage().isEmpty()) {
@@ -106,8 +104,6 @@ public class EmployeeService {
         employee.setPositionId(updateDto.getPositionId());
         employee.setSupervisorId(updateDto.getSupervisorId());
         employee.setHireDate(updateDto.getHireDate());
-        employee.setAnnualLeaveBalance(updateDto.getAnnualLeaveBalance());
-        employee.setSickLeaveBalance(updateDto.getSickLeaveBalance());
 
         if (updateDto.getFaceImage() != null && !updateDto.getFaceImage().isEmpty()) {
             if (faceRecognitionService.isFaceImageValid(updateDto.getFaceImage())) {

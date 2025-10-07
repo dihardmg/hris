@@ -293,7 +293,7 @@ public class LeaveRequestService {
             case "ANNUAL_LEAVE":
                 return leaveBalanceService.getAvailableAnnualLeave(employee.getId());
             case "SICK_LEAVE":
-                return employee.getSickLeaveBalance(); // Keep existing logic for now
+                return 10; // Default sick leave quota since it's no longer tracked in employee table
             default:
                 return 0;
         }
@@ -313,11 +313,8 @@ public class LeaveRequestService {
                 leaveBalanceService.deductAnnualLeave(employee.getId(), leaveRequest.getTotalDays());
                 break;
             case "SICK_LEAVE":
-                // Keep existing logic for now
-                employee.setSickLeaveBalance(
-                    employee.getSickLeaveBalance() - leaveRequest.getTotalDays()
-                );
-                employeeRepository.save(employee);
+                // Sick leave is no longer tracked in employee table - skip deduction
+                // In the future, this should be tracked in hr_quota table as well
                 break;
         }
     }
@@ -335,11 +332,8 @@ public class LeaveRequestService {
                 leaveBalanceService.restoreAnnualLeave(employee.getId(), leaveRequest.getTotalDays());
                 break;
             case "SICK_LEAVE":
-                // Keep existing logic for now
-                employee.setSickLeaveBalance(
-                    employee.getSickLeaveBalance() + leaveRequest.getTotalDays()
-                );
-                employeeRepository.save(employee);
+                // Sick leave is no longer tracked in employee table - skip restoration
+                // In the future, this should be tracked in hr_quota table as well
                 break;
         }
     }
