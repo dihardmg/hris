@@ -64,9 +64,7 @@ class AdminControllerIntegrationTest {
         adminEmployee.setEmployeeId("HRADMIN001");
         adminEmployee.setPhoneNumber("+1234567892");
         adminEmployee.setIsActive(true);
-        adminEmployee.setAnnualLeaveBalance(20);
-        adminEmployee.setSickLeaveBalance(15);
-        employeeRepository.save(adminEmployee);
+          employeeRepository.save(adminEmployee);
 
         hrEmployee = new Employee();
         hrEmployee.setFirstName("HR");
@@ -76,9 +74,7 @@ class AdminControllerIntegrationTest {
         hrEmployee.setEmployeeId("HRSTAFF001");
         hrEmployee.setPhoneNumber("+1234567893");
         hrEmployee.setIsActive(true);
-        hrEmployee.setAnnualLeaveBalance(18);
-        hrEmployee.setSickLeaveBalance(12);
-        employeeRepository.save(hrEmployee);
+          employeeRepository.save(hrEmployee);
 
         regularEmployee = new Employee();
         regularEmployee.setFirstName("Regular");
@@ -89,9 +85,7 @@ class AdminControllerIntegrationTest {
         regularEmployee.setPhoneNumber("+1234567891");
         regularEmployee.setSupervisorId(adminEmployee.getId());
         regularEmployee.setIsActive(true);
-        regularEmployee.setAnnualLeaveBalance(12);
-        regularEmployee.setSickLeaveBalance(10);
-        employeeRepository.save(regularEmployee);
+          employeeRepository.save(regularEmployee);
 
         adminAuthToken = obtainAuthToken("admin@example.com");
         hrAuthToken = obtainAuthToken("hr@example.com");
@@ -124,9 +118,7 @@ class AdminControllerIntegrationTest {
         registrationDto.setPositionId(1L);
         registrationDto.setSupervisorId(adminEmployee.getId());
         registrationDto.setHireDate(new Date());
-        registrationDto.setAnnualLeaveBalance(12);
-        registrationDto.setSickLeaveBalance(10);
-        registrationDto.setFaceImage("base64FaceImage");
+          registrationDto.setFaceImage("base64FaceImage");
 
         mockMvc.perform(post("/api/admin/register-employee")
                 .header("Authorization", adminAuthToken)
@@ -147,9 +139,7 @@ class AdminControllerIntegrationTest {
         registrationDto.setDepartmentId(1L);
         registrationDto.setPositionId(1L);
         registrationDto.setHireDate(new Date());
-        registrationDto.setAnnualLeaveBalance(12);
-        registrationDto.setSickLeaveBalance(10);
-
+  
         mockMvc.perform(post("/api/admin/register-employee")
                 .header("Authorization", hrAuthToken)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -260,9 +250,7 @@ class AdminControllerIntegrationTest {
         updateDto.setDepartmentId(2L);
         updateDto.setPositionId(2L);
         updateDto.setHireDate(new Date());
-        updateDto.setAnnualLeaveBalance(15);
-        updateDto.setSickLeaveBalance(12);
-
+  
         mockMvc.perform(put("/api/admin/employees/" + regularEmployee.getId())
                 .header("Authorization", adminAuthToken)
                 .contentType(MediaType.APPLICATION_JSON)

@@ -61,9 +61,7 @@ class BusinessTravelControllerIntegrationTest {
         supervisorEmployee.setEmployeeId("BTSUP001");
         supervisorEmployee.setPhoneNumber("+1234567895");
         supervisorEmployee.setIsActive(true);
-        supervisorEmployee.setAnnualLeaveBalance(15);
-        supervisorEmployee.setSickLeaveBalance(12);
-        employeeRepository.save(supervisorEmployee);
+              employeeRepository.save(supervisorEmployee);
 
         testEmployee = new Employee();
         testEmployee.setFirstName("Test");
@@ -74,9 +72,7 @@ class BusinessTravelControllerIntegrationTest {
         testEmployee.setPhoneNumber("+1234567894");
         testEmployee.setSupervisorId(supervisorEmployee.getId());
         testEmployee.setIsActive(true);
-        testEmployee.setAnnualLeaveBalance(12);
-        testEmployee.setSickLeaveBalance(10);
-        employeeRepository.save(testEmployee);
+                employeeRepository.save(testEmployee);
 
         employeeAuthToken = obtainAuthToken("test@example.com");
         supervisorAuthToken = obtainAuthToken("supervisor@example.com");

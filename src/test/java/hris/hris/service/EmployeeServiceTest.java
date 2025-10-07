@@ -52,8 +52,6 @@ class EmployeeServiceTest {
         registrationDto.setPositionId(1L);
         registrationDto.setSupervisorId(2L);
         registrationDto.setHireDate(new Date(2023 - 1900, 0, 1));
-        registrationDto.setAnnualLeaveBalance(12);
-        registrationDto.setSickLeaveBalance(5);
         registrationDto.setFaceImage("base64FaceImage");
 
         employee = new Employee();

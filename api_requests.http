@@ -26,7 +26,7 @@
 @sickLeaveId = 2
 @maternityLeaveId = 3
 @attendanceUuid = 550e8400-e29b-41d4-a716-446655440000
-@leaveRequestUuid = 1428df48-0dc9-4d78-a2f7-a20aa14f4394
+@leaveRequestUuid = a7e230e5-a616-4352-8914-4bda5c170f93
 @businessTravelUuid = 4d5d4101-6fbe-408e-b473-884b620d31e6
 @passwordResetToken = your-reset-token-here
 
@@ -422,7 +422,7 @@ GET {{baseUrl}}/api/leave/current
 Authorization: Bearer {{token}}
 
 ### @name approveLeaveRequest
-POST {{baseUrl}}/api/leave/supervisor/approve/1428df48-0dc9-4d78-a2f7-a20aa14f4394
+POST {{baseUrl}}/api/leave/supervisor/approve/{{leaveRequestUuid}}
 Authorization: Bearer {{supervisorToken}}
 
 > {%

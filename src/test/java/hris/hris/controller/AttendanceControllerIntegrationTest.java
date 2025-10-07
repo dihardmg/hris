@@ -77,9 +77,7 @@ class AttendanceControllerIntegrationTest {
         testEmployee.setEmployeeId("ATT001");
         testEmployee.setPhoneNumber("+1234567890");
         testEmployee.setIsActive(true);
-        testEmployee.setAnnualLeaveBalance(12);
-        testEmployee.setSickLeaveBalance(10);
-        employeeRepository.save(testEmployee);
+            employeeRepository.save(testEmployee);
 
         // Create admin employee for admin tests
         Employee adminEmployee = new Employee();
@@ -90,9 +88,7 @@ class AttendanceControllerIntegrationTest {
         adminEmployee.setEmployeeId("ADM001");
         adminEmployee.setPhoneNumber("+1234567899");
         adminEmployee.setIsActive(true);
-        adminEmployee.setAnnualLeaveBalance(20);
-        adminEmployee.setSickLeaveBalance(15);
-        employeeRepository.save(adminEmployee);
+            employeeRepository.save(adminEmployee);
     }
 
     @Test

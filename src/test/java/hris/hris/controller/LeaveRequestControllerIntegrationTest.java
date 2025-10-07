@@ -82,9 +82,7 @@ class LeaveRequestControllerIntegrationTest {
         supervisorEmployee.setEmployeeId("SUP001");
         supervisorEmployee.setPhoneNumber("+1234567896");
         supervisorEmployee.setIsActive(true);
-        supervisorEmployee.setAnnualLeaveBalance(15);
-        supervisorEmployee.setSickLeaveBalance(12);
-        employeeRepository.save(supervisorEmployee);
+                employeeRepository.save(supervisorEmployee);
 
         testEmployee = new Employee();
         testEmployee.setFirstName("Test");
@@ -95,9 +93,7 @@ class LeaveRequestControllerIntegrationTest {
         testEmployee.setPhoneNumber("+1234567897");
         testEmployee.setSupervisorId(supervisorEmployee.getId());
         testEmployee.setIsActive(true);
-        testEmployee.setAnnualLeaveBalance(30);
-        testEmployee.setSickLeaveBalance(10);
-        employeeRepository.save(testEmployee);
+                employeeRepository.save(testEmployee);
 
         // Setup LeaveTypes for testing
         setupLeaveTypes();

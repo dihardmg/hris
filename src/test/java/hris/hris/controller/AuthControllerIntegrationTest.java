@@ -66,9 +66,7 @@ class AuthControllerIntegrationTest {
         testEmployee.setEmployeeId("AUTH001");
         testEmployee.setPhoneNumber("+1234567890");
         testEmployee.setIsActive(true);
-        testEmployee.setAnnualLeaveBalance(12);
-        testEmployee.setSickLeaveBalance(10);
-        employeeRepository.save(testEmployee);
+              employeeRepository.save(testEmployee);
     }
 
     @Test
