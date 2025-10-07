@@ -8,6 +8,7 @@ import hris.hris.repository.EmployeeRepository;
 import hris.hris.repository.LeaveRequestRepository;
 import hris.hris.repository.LeaveTypeRepository;
 import hris.hris.exception.LeaveRequestException;
+import hris.hris.service.LeaveBalanceService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Year;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -31,6 +33,9 @@ public class LeaveRequestService {
 
     @Autowired
     private LeaveTypeRepository leaveTypeRepository;
+
+    @Autowired
+    private LeaveBalanceService leaveBalanceService;
 
     @Transactional
     public LeaveRequest createLeaveRequest(Long employeeId, LeaveRequestDto requestDto) {
@@ -199,6 +204,34 @@ public class LeaveRequestService {
         return savedRequest;
     }
 
+    @Transactional
+    public LeaveRequest cancelLeaveRequest(UUID uuid, Long employeeId) {
+        LeaveRequest leaveRequest = leaveRequestRepository.findByUuid(uuid)
+            .orElseThrow(() -> new LeaveRequestException(LeaveRequestException.LeaveErrorType.NOT_FOUND));
+
+        if (!leaveRequest.getStatus().equals(LeaveRequest.RequestStatus.PENDING)) {
+            throw new LeaveRequestException(LeaveRequestException.LeaveErrorType.NOT_PENDING);
+        }
+
+        Employee employee = leaveRequest.getEmployee();
+        if (!employee.getId().equals(employeeId)) {
+            throw new RuntimeException("You are not authorized to cancel this leave request");
+        }
+
+        // Restore balance if it was previously deducted (shouldn't happen for PENDING, but just in case)
+        if (leaveRequest.getLeaveType() != null && leaveRequest.getLeaveType().getHasBalanceQuota()) {
+            restoreLeaveBalance(employee, leaveRequest);
+        }
+
+        leaveRequest.setStatus(LeaveRequest.RequestStatus.CANCELLED);
+        leaveRequest.setUpdatedBy(employee);
+
+        LeaveRequest savedRequest = leaveRequestRepository.save(leaveRequest);
+        log.info("Leave request {} cancelled by employee {}", uuid, employee.getEmployeeId());
+
+        return savedRequest;
+    }
+
     @Transactional(readOnly = true)
     public List<LeaveRequest> getEmployeeLeaveRequests(Long employeeId) {
         return leaveRequestRepository.findByEmployeeIdOrderByCreatedAtDesc(employeeId);
@@ -258,9 +291,9 @@ public class LeaveRequestService {
 
         switch (leaveType.getCode()) {
             case "ANNUAL_LEAVE":
-                return employee.getAnnualLeaveBalance();
+                return leaveBalanceService.getAvailableAnnualLeave(employee.getId());
             case "SICK_LEAVE":
-                return employee.getSickLeaveBalance();
+                return employee.getSickLeaveBalance(); // Keep existing logic for now
             default:
                 return 0;
         }
@@ -276,17 +309,39 @@ public class LeaveRequestService {
 
         switch (leaveType.getCode()) {
             case "ANNUAL_LEAVE":
-                employee.setAnnualLeaveBalance(
-                    employee.getAnnualLeaveBalance() - leaveRequest.getTotalDays()
-                );
+                // Use LeaveBalanceService to deduct from hr_quota
+                leaveBalanceService.deductAnnualLeave(employee.getId(), leaveRequest.getTotalDays());
                 break;
             case "SICK_LEAVE":
+                // Keep existing logic for now
                 employee.setSickLeaveBalance(
                     employee.getSickLeaveBalance() - leaveRequest.getTotalDays()
                 );
+                employeeRepository.save(employee);
                 break;
         }
-        employeeRepository.save(employee);
+    }
+
+    private void restoreLeaveBalance(Employee employee, LeaveRequest leaveRequest) {
+        LeaveType leaveType = leaveRequest.getLeaveType();
+
+        if (!leaveType.getHasBalanceQuota()) {
+            return;
+        }
+
+        switch (leaveType.getCode()) {
+            case "ANNUAL_LEAVE":
+                // Use LeaveBalanceService to restore to hr_quota
+                leaveBalanceService.restoreAnnualLeave(employee.getId(), leaveRequest.getTotalDays());
+                break;
+            case "SICK_LEAVE":
+                // Keep existing logic for now
+                employee.setSickLeaveBalance(
+                    employee.getSickLeaveBalance() + leaveRequest.getTotalDays()
+                );
+                employeeRepository.save(employee);
+                break;
+        }
     }
 
     }

@@ -11,10 +11,13 @@
 @baseUrl = http://{{hostname}}
 
 # --- AUTHENTICATION TOKENS (Update after login) ---
-@token =eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJtY3JkaWtAZ21haWwuY29tIiwiZW1wbG95ZWVJZCI6NDE0NiwiZW1wbG95ZWVDb2RlIjoiRU1QNjcxMzkiLCJ0aW1lem9uZSI6IkFzaWEvSmFrYXJ0YSIsImlhdCI6MTc1OTcyNTYxMywiZXhwIjoxNzU5ODEyMDEzfQ.ucT8cjX0pZ2uazI4h57rHxrYaVUpaLLN6eYIEJgyIhw_JZvggAWNNtR88CIH07LD
+@token = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJtY3JkaWtAZ21haWwuY29tIiwiZW1wbG95ZWVJZCI6NDE0NiwiZW1wbG95ZWVDb2RlIjoiRU1QNjcxMzkiLCJ0aW1lem9uZSI6IkFzaWEvSmFrYXJ0YSIsImlhdCI6MTc1OTgxMjgyMiwiZXhwIjoxNzU5ODk5MjIyfQ.eRsv3R2vBxiNwFwtR8B5Ni9OaI-y6SgFPaDdFnH_6g7YY6jPyUgiuo316wkGjRYe
+
+
 @adminToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
-@supervisorToken = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJzdXBlcnZpc29yQGhyaXMuY29tIiwiZW1wbG95ZWVJZCI6MywiZW1wbG95ZWVDb2RlIjoiU1VQMDAxIiwidGltZXpvbmUiOiJBc2lhL0pha2FydGEiLCJpYXQiOjE3NTk3MjU5ODUsImV4cCI6MTc1OTgxMjM4NX0.GTZNeYi1tRKmkcaqfztfCVbN5xL9zwMTpyHfBs7IDO9OpCNbmVfujP-WQ1ph2Zsy
+
+@supervisorToken = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJzdXBlcnZpc29yQGhyaXMuY29tIiwiZW1wbG95ZWVJZCI6MywiZW1wbG95ZWVDb2RlIjoiU1VQMDAxIiwidGltZXpvbmUiOiJBc2lhL0pha2FydGEiLCJpYXQiOjE3NTk4MTQ5MTMsImV4cCI6MTc1OTkwMTMxM30.YEBEcCbl-jxymM9rb8g0q4C0iJWnFynENfyIdhZSynQT9k154cawMVIg8TCkp749
 # --- DYNAMIC VARIABLES (Update after creating resources) ---
 # Employee and Leave Type IDs are NUMERIC (1, 2, 3...)
 # Leave Request, Attendance, Business Travel IDs are UUIDs for security
@@ -23,7 +26,7 @@
 @sickLeaveId = 2
 @maternityLeaveId = 3
 @attendanceUuid = 550e8400-e29b-41d4-a716-446655440000
-@leaveRequestUuid = e23ccc13-cb22-44f6-8641-c58bc4ca7170
+@leaveRequestUuid = 1428df48-0dc9-4d78-a2f7-a20aa14f4394
 @businessTravelUuid = 4d5d4101-6fbe-408e-b473-884b620d31e6
 @passwordResetToken = your-reset-token-here
 
@@ -419,7 +422,7 @@ GET {{baseUrl}}/api/leave/current
 Authorization: Bearer {{token}}
 
 ### @name approveLeaveRequest
-POST {{baseUrl}}/api/leave/supervisor/approve/{{leaveRequestUuid}}
+POST {{baseUrl}}/api/leave/supervisor/approve/1428df48-0dc9-4d78-a2f7-a20aa14f4394
 Authorization: Bearer {{supervisorToken}}
 
 > {%
@@ -432,7 +435,7 @@ Authorization: Bearer {{supervisorToken}}
 %}
 
 ### @name rejectLeaveRequest
-POST {{baseUrl}}/api/leave/supervisor/reject/{{leaveRequestUuid}}
+POST {{baseUrl}}/api/leave/supervisor/reject/1428df48-0dc9-4d78-a2f7-a20aa14f4394
 Authorization: Bearer {{supervisorToken}}
 
 > {%
@@ -676,7 +679,228 @@ GET {{baseUrl}}/api/v1/leave-balance/my-balances/leave-type/{{annualLeaveId}}
 Authorization: Bearer {{token}}
 
 ### =====================================================
-### 4.3 INDONESIAN REGULATION COMPLIANCE TESTS
+### 4.3 HR QUOTA MANAGEMENT ENDPOINTS (NEW)
+### =====================================================
+
+### @name getMyHrQuota
+GET {{baseUrl}}/api/v1/hr-quota/my-quota
+Authorization: Bearer {{token}}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ My HR quota retrieved successfully!");
+    client.log("Current Year: " + response.body.data.tahun);
+    client.log("Annual Quota: " + response.body.data.cutiTahunan + " days");
+    client.log("Used: " + response.body.data.cutiTahunanTerpakai + " days");
+    client.log("Remaining: " + response.body.data.sisaCutiTahunan + " days");
+  } else {
+    client.log("❌ HR quota retrieval failed: " + response.body.message);
+  }
+%}
+
+### @name getMyHrQuotaByYear
+GET {{baseUrl}}/api/v1/hr-quota/my-quota?tahun=2025
+Authorization: Bearer {{token}}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ My HR quota for 2025 retrieved!");
+    client.log("Annual Quota: " + response.body.data.cutiTahunan + " days");
+    client.log("Used: " + response.body.data.cutiTahunanTerpakai + " days");
+    client.log("Remaining: " + response.body.data.sisaCutiTahunan + " days");
+  } else {
+    client.log("❌ HR quota by year retrieval failed: " + response.body.message);
+  }
+%}
+
+### @name getHrQuotaByEmployeeId
+GET {{baseUrl}}/api/v1/hr-quota/employee/{{employeeId}}?tahun=2025
+Authorization: Bearer {{supervisorToken}}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ Employee HR quota retrieved by supervisor!");
+    client.log("Employee ID: " + response.body.data.idEmployee);
+    client.log("Year: " + response.body.data.tahun);
+    client.log("Annual Quota: " + response.body.data.cutiTahunan + " days");
+    client.log("Used: " + response.body.data.cutiTahunanTerpakai + " days");
+    client.log("Remaining: " + response.body.data.sisaCutiTahunan + " days");
+  } else {
+    client.log("❌ Employee HR quota retrieval failed: " + response.body.message);
+  }
+%}
+
+### @name getAllHrQuotasByYear
+GET {{baseUrl}}/api/v1/hr-quota/all?tahun=2025
+Authorization: Bearer {{adminToken}}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ All HR quotas for 2025 retrieved (Admin only)!");
+    client.log("Total records: " + response.body.data.length);
+    response.body.data.forEach(function(quota) {
+      client.log("Employee " + quota.idEmployee + ": " + quota.sisaCutiTahunan + "/" + quota.cutiTahunan + " days remaining");
+    });
+  } else if (response.status === 403) {
+    client.log("❌ Access denied - Admin role required");
+  } else {
+    client.log("❌ All HR quotas retrieval failed: " + response.body.message);
+  }
+%}
+
+### @name createInitialHrQuota
+POST {{baseUrl}}/api/v1/hr-quota/create
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "employeeId": {{employeeId}},
+  "tahun": 2025,
+  "initialQuota": 15
+}
+
+> {%
+  if (response.status === 201) {
+    client.log("✅ Initial HR quota created successfully!");
+    client.log("Employee ID: " + response.body.data.idEmployee);
+    client.log("Year: " + response.body.data.tahun);
+    client.log("Initial Quota: " + response.body.data.cutiTahunan + " days");
+  } else {
+    client.log("❌ HR quota creation failed: " + response.body.message);
+  }
+%}
+
+### @name updateHrQuota
+PUT {{baseUrl}}/api/v1/hr-quota/update/{{employeeId}}?tahun=2025
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "newQuota": 14
+}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ HR quota updated successfully!");
+    client.log("New Annual Quota: " + response.body.data.cutiTahunan + " days");
+  } else {
+    client.log("❌ HR quota update failed: " + response.body.message);
+  }
+%}
+
+### @name deductHrQuota
+POST {{baseUrl}}/api/v1/hr-quota/deduct/{{employeeId}}?tahun=2025
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "days": 3
+}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ HR quota deducted successfully!");
+    client.log("Days Deducted: 3");
+    client.log("New Used Days: " + response.body.data.cutiTahunanTerpakai);
+    client.log("New Remaining: " + response.body.data.sisaCutiTahunan);
+  } else {
+    client.log("❌ HR quota deduction failed: " + response.body.message);
+  }
+%}
+
+### @name restoreHrQuota
+POST {{baseUrl}}/api/v1/hr-quota/restore/{{employeeId}}?tahun=2025
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "days": 2
+}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ HR quota restored successfully!");
+    client.log("Days Restored: 2");
+    client.log("New Used Days: " + response.body.data.cutiTahunanTerpakai);
+    client.log("New Remaining: " + response.body.data.sisaCutiTahunan);
+  } else {
+    client.log("❌ HR quota restoration failed: " + response.body.message);
+  }
+%}
+
+### @name resetAllHrQuotasByYear
+POST {{baseUrl}}/api/v1/hr-quota/reset-all?tahun=2025
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "newQuota": 12
+}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ All HR quotas for 2025 reset successfully!");
+    client.log("Employees Updated: " + response.body.data.employeesUpdated);
+    client.log("New Quota: " + response.body.data.newQuota + " days");
+  } else {
+    client.log("❌ HR quotas reset failed: " + response.body.message);
+  }
+%}
+
+### @name getHrQuotaStatistics
+GET {{baseUrl}}/api/v1/hr-quota/statistics?tahun=2025
+Authorization: Bearer {{adminToken}}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ HR quota statistics for 2025 retrieved!");
+    client.log("Total Employees: " + response.body.data.totalEmployees);
+    client.log("Total Quota Allocated: " + response.body.data.totalQuota + " days");
+    client.log("Total Quota Used: " + response.body.data.totalUsed + " days");
+    client.log("Total Remaining: " + response.body.data.totalRemaining + " days");
+    client.log("Usage Percentage: " + response.body.data.usagePercentage + "%");
+  } else {
+    client.log("❌ HR quota statistics retrieval failed: " + response.body.message);
+  }
+%}
+
+### @name getHrQuotasWithNegativeBalance
+GET {{baseUrl}}/api/v1/hr-quota/negative-balance?tahun=2025
+Authorization: Bearer {{adminToken}}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ HR quotas with negative balance retrieved!");
+    client.log("Total with negative balance: " + response.body.data.length);
+    response.body.data.forEach(function(quota) {
+      client.log("Employee " + quota.idEmployee + ": " + quota.sisaCutiTahunan + " days (negative)");
+    });
+  } else {
+    client.log("❌ Negative balance quotas retrieval failed: " + response.body.message);
+  }
+%}
+
+### @name testHrQuotaIntegration
+GET {{baseUrl}}/api/v1/hr-quota/my-quota?tahun=2025
+Authorization: Bearer {{token}}
+
+> {%
+  if (response.status === 200) {
+    client.log("🔗 HR QUOTA INTEGRATION TEST:");
+    client.log("================================");
+    client.log("✅ hr_quota table integration working!");
+    client.log("Employee Quota: " + response.body.data.cutiTahunan + " days");
+    client.log("Used Days: " + response.body.data.cutiTahunanTerpakai + " days");
+    client.log("Remaining: " + response.body.data.sisaCutiTahunan + " days");
+    client.log("================================");
+    client.log("This integrates with LeaveRequestService for automatic deduction");
+  } else {
+    client.log("❌ HR quota integration test failed: " + response.body.message);
+  }
+%}
+
+### =====================================================
+### 4.4 INDONESIAN REGULATION COMPLIANCE TESTS
 ### =====================================================
 
 ### @name submitAnnualLeaveIndonesia
@@ -685,9 +909,9 @@ Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "leaveTypeId": {{annualLeaveId}},
-  "startDate": "2025-12-01",
-  "endDate": "2025-12-12",
+  "leaveTypeId": 1,
+  "startDate": "2025-11-11",
+  "endDate": "2025-11-16",
   "reason": "Cuti tahunan sesuai UU Ketenagakerjaan (12 hari minimal)"
 }
 
@@ -1405,6 +1629,7 @@ Authorization: Bearer {{token}}
 # 2. submitAnnualLeaveIndonesia → submitMaternityLeaveIndonesia → submitSickLeaveWithDocument
 # 3. submitImportantReasonLeave → submitMenstrualLeave → submitCompassionateLeave → submitUnpaidLeave
 # 4. testBalanceQuotaDeduction → getMyLeaveBalances → verify balance behavior
+# 5. getMyHrQuota → testHrQuotaIntegration → verify hr_quota table functionality
 
 # --- WORKFLOW 3: SUPERVISOR APPROVAL WORKFLOW ---
 # 1. loginSupervisor → getPendingLeaveRequests → approveLeaveRequest
@@ -1419,7 +1644,8 @@ Authorization: Bearer {{token}}
 # 2. createLeaveType → updateLeaveType → getAllLeaveTypes → deactivateLeaveType
 # 3. getAllLeaveBalances → monitor organization-wide leave usage
 # 4. getEmployeeById → deactivateEmployee → updateFaceTemplate
-# 5. Test pagination and search functionality
+# 5. createInitialHrQuota → updateHrQuota → getHrQuotaStatistics → resetAllHrQuotasByYear
+# 6. Test pagination and search functionality
 
 # --- WORKFLOW 5: PASSWORD RESET WORKFLOW ---
 # 1. requestPasswordReset → checkEmail → verifyResetToken → resetPasswordWithValidToken
@@ -1459,6 +1685,7 @@ Authorization: Bearer {{token}}
 # Leave Types: [{"id": 1, "code": "ANNUAL_LEAVE", "name": "Cuti Tahunan", "hasBalanceQuota": true}]
 # Leave Balances: [{"employeeName": "...", "leaveTypeName": "...", "remainingQuota": 10, "totalQuota": 12, "percentageUsed": 16.67}]
 # Leave Requests: {"uuid": "...", "leaveType": {"id": 1, "name": "Cuti Tahunan"}, "remainingBalance": 10}
+# HR Quotas: {"id": 1, "idEmployee": 1, "tahun": 2025, "cutiTahunan": 12, "cutiTahunanTerpakai": 3, "sisaCutiTahunan": 9}
 
 # --- UPDATED STATUS CODES ---
 # Create requests: 201 Created (POST /api/leave/request, POST /api/business-travel/request)
@@ -1484,6 +1711,8 @@ Authorization: Bearer {{token}}
 # - All sensitive endpoints require proper authentication
 # - Leave balance access controlled by role (Employee, Supervisor, Manager/HR)
 # - Leave type management restricted to Admin/HR roles only
+# - HR quota management restricted to Admin/HR roles for create/update/delete operations
+# - Employees can only view their own HR quota; supervisors can view subordinates' quotas
 
 ### =====================================================
 ### END OF COMPREHENSIVE API TESTING SUITE
