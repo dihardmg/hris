@@ -49,7 +49,6 @@ public class HrQuotaController {
             response.put("tahun", targetYear.getValue());
             response.put("cutiTahunan", 0);
             response.put("cutiTahunanTerpakai", 0);
-            response.put("sisaCutiTahunan", 0);
             response.put("message", "No quota found for year " + targetYear.getValue());
 
             Map<String, Object> result = new HashMap<>();
@@ -66,8 +65,7 @@ public class HrQuotaController {
         response.put("tahun", quota.getTahun().getValue());
         response.put("cutiTahunan", quota.getCutiTahunan());
         response.put("cutiTahunanTerpakai", quota.getCutiTahunanTerpakai());
-        response.put("sisaCutiTahunan", quota.getSisaCutiTahunan());
-
+        
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
         result.put("data", response);
@@ -114,8 +112,7 @@ public class HrQuotaController {
         response.put("tahun", quota.getTahun().getValue());
         response.put("cutiTahunan", quota.getCutiTahunan());
         response.put("cutiTahunanTerpakai", quota.getCutiTahunanTerpakai());
-        response.put("sisaCutiTahunan", quota.getSisaCutiTahunan());
-
+        
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
         result.put("data", response);
@@ -204,8 +201,7 @@ public class HrQuotaController {
         response.put("tahun", savedQuota.getTahun().getValue());
         response.put("cutiTahunan", savedQuota.getCutiTahunan());
         response.put("cutiTahunanTerpakai", savedQuota.getCutiTahunanTerpakai());
-        response.put("sisaCutiTahunan", savedQuota.getSisaCutiTahunan());
-
+    
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
         result.put("data", response);
@@ -255,8 +251,7 @@ public class HrQuotaController {
         response.put("tahun", savedQuota.getTahun().getValue());
         response.put("cutiTahunan", savedQuota.getCutiTahunan());
         response.put("cutiTahunanTerpakai", savedQuota.getCutiTahunanTerpakai());
-        response.put("sisaCutiTahunan", savedQuota.getSisaCutiTahunan());
-
+    
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
         result.put("data", response);

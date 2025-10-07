@@ -51,10 +51,6 @@ public class HrQuota {
     }
 
     // Utility methods
-    public Integer getSisaCutiTahunan() {
-        return cutiTahunan - cutiTahunanTerpakai;
-    }
-
     public void tambahCutiTerpakai(Integer hari) {
         // Kurangi cuti tahunan dan tambah cuti terpakai sesuai permintaan user
         this.cutiTahunan = Math.max(0, this.cutiTahunan - hari);

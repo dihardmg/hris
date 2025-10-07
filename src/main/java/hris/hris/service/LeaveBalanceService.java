@@ -97,14 +97,14 @@ public class LeaveBalanceService {
         if (!quota.adaSisaCuti(days)) {
             throw new RuntimeException(
                 String.format("Insufficient annual leave balance. Available: %d days, Requested: %d days",
-                    quota.getSisaCutiTahunan(), days));
+                    quota.getCutiTahunan(), days));
         }
 
         quota.tambahCutiTerpakai(days);
         hrQuotaRepository.save(quota);
 
         log.info("Deducted {} days from annual leave balance for employee {} in year {}. Remaining balance: {} days",
-                days, employeeId, tahun, quota.getSisaCutiTahunan());
+                days, employeeId, tahun, quota.getCutiTahunan());
     }
 
     /**

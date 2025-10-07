@@ -22,10 +22,7 @@ public interface HrQuotaRepository extends JpaRepository<HrQuota, Long> {
     // Find all quotas by year
     List<HrQuota> findByTahun(Year tahun);
 
-    // Get remaining leave days for employee in specific year
-    @Query("SELECT (h.cutiTahunan - h.cutiTahunanTerpakai) FROM HrQuota h WHERE h.idEmployee = :idEmployee AND h.tahun = :tahun")
-    Integer getSisaCutiTahunan(@Param("idEmployee") Long idEmployee, @Param("tahun") Year tahun);
-
+    
     // Check if quota exists for employee and year
     boolean existsByIdEmployeeAndTahun(Long idEmployee, Year tahun);
 
