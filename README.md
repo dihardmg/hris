@@ -230,6 +230,326 @@ Get current authenticated user information.
 
 ---
 
+## 📊 System Flow Diagrams
+
+### System Architecture Overview
+
+```mermaid
+flowchart TB
+    subgraph "Client Layer"
+        A[Web/Mobile Client]
+        B[External Systems]
+    end
+
+    subgraph "API Gateway & Security"
+        C[Spring Boot API]
+        D[JWT Authentication]
+        E[Rate Limiting<br/>Redis-based]
+    end
+
+    subgraph "Business Logic Layer"
+        F[Authentication Service]
+        G[Attendance Service]
+        H[Leave Management]
+        I[Business Travel]
+        J[HR Admin Service]
+    end
+
+    subgraph "Data & Integration Layer"
+        K[(PostgreSQL DB)]
+        L[(Redis Cache)]
+        M[Email Service<br/>SendGrid]
+        N[File Storage<br/>Face Templates]
+    end
+
+    A --> C
+    B --> C
+    C --> D
+    C --> E
+    D --> F
+    E --> F
+    C --> G
+    C --> H
+    C --> I
+    C --> J
+
+    F --> K
+    G --> K
+    H --> K
+    I --> K
+    J --> K
+
+    E --> L
+    F --> L
+    G --> L
+    H --> L
+    I --> L
+
+    F --> M
+    H --> M
+    I --> M
+
+    G --> N
+
+    style C fill:#e1f5fe
+    style K fill:#f3e5f5
+    style L fill:#fff3e0
+    style M fill:#e8f5e8
+```
+
+### 1. Authentication Flow with Rate Limiting
+
+```mermaid
+flowchart TD
+    A[User Request Login] --> B{Check Rate Limits}
+    B --> C{Failed Login Rate<br/>5 attempts/5min}
+    B --> D{Success Login Rate<br/>5 per account, 20 per IP/5min}
+
+    C -->|Exceeded| E[Return 429 Too Many Requests]
+    D -->|Exceeded| E
+
+    C -->|Allowed| F[Proceed to Authentication]
+    D -->|Allowed| F
+
+    F --> G{Validate Credentials}
+    G -->|Invalid| H[Record Failed Attempt]
+    G -->|Valid| I[Check Employee Status]
+
+    H --> J{Failed Attempts >= 5?}
+    J -->|Yes| K[Lock Account 5 min]
+    J -->|No| L[Return 401 Unauthorized]
+
+    I -->|Inactive| M[Return 401 Unauthorized]
+    I -->|Active| N[Record Successful Login]
+
+    N --> O[Generate JWT Token]
+    O --> P[Return Login Response]
+
+    K --> Q[Wait for Lockout Expiry]
+    Q --> R[Reset Failed Counter]
+    R --> F
+
+    style E fill:#ffcccc
+    style L fill:#ffcccc
+    style M fill:#ffcccc
+    style P fill:#ccffcc
+```
+
+### 2. Attendance Management Flow
+
+```mermaid
+flowchart TD
+    A[Employee Clock In Request] --> B{Validate Token}
+    B -->|Invalid| C[Return 401 Unauthorized]
+    B -->|Valid| D{Check Today's Attendance}
+
+    D -->|Already Clocked In| E[Return 409 Conflict]
+    D -->|No Record Today| F[Validate Location]
+
+    F -->|Outside Geofence| G[Return 400 Bad Request]
+    F -->|Within Geofence| H[Upload Face Image]
+
+    H --> I[Face Recognition Check]
+    I -->|Confidence < 0.7| J[Return 400 Bad Request]
+    I -->|Confidence >= 0.7| K[Create Attendance Record]
+
+    K --> L[Record Clock In Time]
+    L --> M[Return Success Response]
+
+    N[Employee Clock Out Request] --> O{Validate Token}
+    O -->|Invalid| C
+    O -->|Valid| P{Find Active Attendance}
+
+    P -->|No Active Record| Q[Return 400 Bad Request]
+    P -->|Active Record Found| R[Update Clock Out Time]
+
+    R --> S[Calculate Total Hours]
+    S --> T[Return Success Response]
+
+    style C fill:#ffcccc
+    style E fill:#ffcccc
+    style G fill:#ffcccc
+    style J fill:#ffcccc
+    style Q fill:#ffcccc
+    style M fill:#ccffcc
+    style T fill:#ccffcc
+```
+
+### 3. Leave Request Workflow
+
+```mermaid
+flowchart TD
+    A[Employee Submit Leave Request] --> B{Validate Token}
+    B -->|Invalid| C[Return 401 Unauthorized]
+    B -->|Valid| D[Validate Leave Data]
+
+    D --> E{Check Leave Balance}
+    E -->|Insufficient| F[Return 400 Bad Request]
+    E -->|Sufficient| G{Check Date Overlap}
+
+    G -->|Has Overlap| H[Return 409 Conflict]
+    G -->|No Overlap| I[Create Leave Request]
+
+    I --> J[Status: PENDING]
+    J --> K[Email Notification to Supervisor]
+    K --> L[Return Success Response]
+
+    M[Supervisor Review Request] --> N{Validate Supervisor Role}
+    N -->|Unauthorized| O[Return 403 Forbidden]
+    N -->|Authorized| P[Review Request Details]
+
+    P --> Q{Decision}
+    Q -->|Approve| R[Update Status: APPROVED]
+    Q -->|Reject| S[Update Status: REJECTED]
+
+    R --> T[Update Leave Balance]
+    S --> U[Keep Leave Balance]
+
+    T --> V[Email Notification to Employee]
+    U --> V
+    V --> W[Return Success Response]
+
+    style C fill:#ffcccc
+    style F fill:#ffcccc
+    style H fill:#ffcccc
+    style O fill:#ffcccc
+    style L fill:#ccffcc
+    style W fill:#ccffcc
+```
+
+### 4. Business Travel Request Workflow
+
+```mermaid
+flowchart TD
+    A[Employee Submit Travel Request] --> B{Validate Token}
+    B -->|Invalid| C[Return 401 Unauthorized]
+    B -->|Valid| D[Validate Travel Data]
+
+    D --> E{Check Leave Conflicts}
+    E -->|Has Conflict| F[Return 409 Conflict]
+    E -->|No Conflict| G[Create Travel Request]
+
+    G --> H[Status: PENDING]
+    H --> I[Email Notification to Supervisor]
+    I --> J[Return Success Response]
+
+    K[Supervisor Review Travel Request] --> L{Validate Supervisor Role}
+    L -->|Unauthorized| M[Return 403 Forbidden]
+    L -->|Authorized| N[Review Travel Details]
+
+    N --> O{Decision}
+    O -->|Approve| P[Update Status: APPROVED]
+    O -->|Reject| Q[Update Status: REJECTED]
+
+    P --> R[Email Notification to Employee]
+    Q --> R
+    R --> S[Return Success Response]
+
+    T[Employee View Current Travel] --> U{Validate Token}
+    U -->|Invalid| C
+    U -->|Valid| V[Get Active Travel Requests]
+    V --> W[Return Travel List]
+
+    style C fill:#ffcccc
+    style F fill:#ffcccc
+    style M fill:#ffcccc
+    style J fill:#ccffcc
+    style S fill:#ccffcc
+    style W fill:#ccffcc
+```
+
+### 5. Password Reset Workflow
+
+```mermaid
+flowchart TD
+    A[User Forgot Password] --> B[POST /api/auth/password-reset/forgot]
+    B --> C{Validate Email Format}
+    C -->|Invalid| D[Return 400 Bad Request]
+    C -->|Valid| E{Check Rate Limit<br/>3 requests/hour}
+
+    E -->|Exceeded| F[Return 429 Too Many Requests]
+    E -->|Allowed| G[Generate UUID Token]
+
+    G --> H[Store Token in Database]
+    H --> I{Email Service Available?}
+    I -->|Yes| J[Send Password Reset Email]
+    I -->|No| K[Log Token for Development]
+
+    J --> L[Return Generic Success Message]
+    K --> L
+
+    M[User Click Reset Link] --> N[GET /api/auth/password-reset/verify-token]
+    N --> O{Validate Token}
+    O -->|Invalid/Expired| P[Return 400 Bad Request]
+    O -->|Valid| Q[Show Reset Password Form]
+
+    R[User Submit New Password] --> S[POST /api/auth/password-reset/reset]
+    S --> T{Validate Token & Input}
+    T -->|Invalid| U[Return 400 Bad Request]
+    T -->|Valid| V{Check Password History<br/>Last 5 passwords}
+
+    V -->|Password Reused| W[Return 400 Bad Request]
+    V -->|New Password| X[Save Current Password to History]
+
+    X --> Y[Update Employee Password]
+    Y --> Z[Mark Token as Used]
+    Z --> AA[Invalidate Other Tokens]
+    AA --> BB[Send Confirmation Email]
+    BB --> CC[Return Success Message]
+
+    style D fill:#ffcccc
+    style F fill:#ffcccc
+    style P fill:#ffcccc
+    style U fill:#ffcccc
+    style W fill:#ffcccc
+    style L fill:#ccffcc
+    style CC fill:#ccffcc
+```
+
+### 6. Rate Limiting System Architecture
+
+```mermaid
+flowchart TD
+    A[API Request] --> B{Rate Limit Check}
+    B --> C{Request Type}
+
+    C -->|Login Failed| D[Redis Key: rate_limit:{email}]
+    C -->|Login Success| E[Redis Key: login_success:{email}]
+    C -->|Login Success IP| F[Redis Key: login_success_ip:{ip}]
+    C -->|Password Reset| G[Redis Key: password_reset:{email}]
+
+    D --> H{Check Failed Attempts<br/>Max: 5 per 5min}
+    E --> I{Check Success Attempts<br/>Max: 5 per 5min per account}
+    F --> J{Check Success Attempts<br/>Max: 20 per 5min per IP}
+    G --> K{Check Reset Requests<br/>Max: 3 per hour}
+
+    H -->|Exceeded| L[Apply 5min Lockout]
+    I -->|Exceeded| M[Return 429 Too Many Requests]
+    J -->|Exceeded| M
+    K -->|Exceeded| M
+
+    H -->|Allowed| N[Process Request]
+    I -->|Allowed| N
+    J -->|Allowed| N
+    K -->|Allowed| N
+
+    L --> O[Wait for Lockout Expiry]
+    O --> P[Reset Counter]
+    P --> N
+
+    N --> Q{Request Result}
+    Q -->|Success| R[Update Counters]
+    Q -->|Failed| S[Log Attempt]
+
+    R --> T[Return Response]
+    S --> T
+
+    style M fill:#ffcccc
+    style T fill:#ccffcc
+```
+
+---
+
 ## 🔑 Password Reset Endpoints
 
 ### POST /api/auth/password-reset/forgot
