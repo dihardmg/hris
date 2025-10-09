@@ -67,16 +67,9 @@ public class AuthenticationService {
             // Calculate token expiration time
             Date expiresAt = new Date(System.currentTimeMillis() + jwtExpiration);
 
-            // Calculate WIB expiration time
-            ZonedDateTime expiresAtWIB = ZonedDateTime.now(java.time.ZoneId.of("Asia/Jakarta"))
-                .plusMinutes(jwtExpiration / 60000);
-            String expiresAtWIBString = expiresAtWIB.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z"));
-
             return LoginResponse.builder()
                 .token(token)
-                .email(employee.getEmail())
                 .expiresAt(expiresAt)
-                .expiresAtWIB(expiresAtWIBString)
                 .build();
 
         } catch (BadCredentialsException e) {

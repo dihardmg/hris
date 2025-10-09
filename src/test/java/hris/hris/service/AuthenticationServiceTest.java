@@ -99,7 +99,8 @@ class AuthenticationServiceTest {
 
         assertNotNull(response);
         assertEquals(token, response.getToken());
-        assertEquals("test@example.com", response.getEmail());
+        assertEquals("Bearer", response.getType());
+        assertNotNull(response.getExpiresAt());
 
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
         verify(employeeRepository).findByEmail("test@example.com");

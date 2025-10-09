@@ -18,7 +18,5 @@ public class LoginResponse {
     private String token;
     @Builder.Default
     private String type = "Bearer";
-    private String email;
     private Date expiresAt;
-    private String expiresAtWIB;
 }

@@ -80,7 +80,8 @@ class AuthControllerIntegrationTest {
                 .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.token").exists())
-                .andExpect(jsonPath("$.data.email").value("test@example.com"));
+                .andExpect(jsonPath("$.data.type").value("Bearer"))
+                .andExpect(jsonPath("$.data.expiresAt").exists());
     }
 
     @Test
