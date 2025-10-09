@@ -1,0 +1,53 @@
+# K6 Load Testing - Git Ignore
+
+# Test results and reports
+results/
+*.json
+*.html
+*.log
+
+# Node modules (if using npm)
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.staging
+.env.production
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Coverage reports
+coverage/
+
+# K6 specific
+k6-output/
+*.k6-output
+
+# Test artifacts
+test-artifacts/
+performance-snapshots/
+
+# Debug files
+debug/
+debug-logs/
