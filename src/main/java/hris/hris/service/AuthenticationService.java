@@ -37,13 +37,16 @@ public class AuthenticationService {
     @Autowired
     private EmployeeRepository employeeRepository;
 
+    @Autowired
+    private RateLimitingService rateLimitingService;
+
     @Value("${jwt.expiration}")
     private Long jwtExpiration;
 
     @Transactional
-    public LoginResponse authenticateUser(LoginRequest loginRequest) {
+    public LoginResponse authenticateUser(LoginRequest loginRequest, String clientIP) {
         try {
-            log.info("Attempting authentication for user: {}", loginRequest.getEmail());
+            log.info("Attempting authentication for user: {} from IP: {}", loginRequest.getEmail(), clientIP);
 
             Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
@@ -63,6 +66,9 @@ public class AuthenticationService {
             );
 
             log.info("Authentication successful for user: {}", loginRequest.getEmail());
+
+            // Record successful login for rate limiting
+            rateLimitingService.recordSuccessfulLogin(loginRequest.getEmail(), clientIP);
 
             // Calculate token expiration time
             Date expiresAt = new Date(System.currentTimeMillis() + jwtExpiration);

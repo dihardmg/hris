@@ -137,6 +137,44 @@ public class GlobalExceptionHandler {
                 .body(response);
     }
 
+    @ExceptionHandler(LoginSuccessRateLimitException.class)
+    public ResponseEntity<Map<String, Object>> handleLoginSuccessRateLimitException(
+            LoginSuccessRateLimitException ex, WebRequest request) {
+
+        log.warn("Success login rate limit exceeded for email: {}, IP: {}, Message: {}",
+                ex.getEmail(), ex.getClientIP(), ex.getMessage());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        response.put("status", HttpStatus.TOO_MANY_REQUESTS.value());
+        response.put("error", "Too Many Requests");
+        response.put("message", ex.getMessage());
+        response.put("path", request.getDescription(false).replace("uri=", ""));
+        response.put("retryAfter", ex.getRetryAfterSeconds());
+        response.put("email", ex.getEmail());
+        response.put("clientIP", ex.getClientIP());
+        response.put("rateLimitType", "LOGIN_SUCCESS");
+
+        if (ex.getRequestId() != null) {
+            response.put("requestId", ex.getRequestId());
+        }
+
+        // Create response headers following RESTful best practices
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Retry-After", String.valueOf(ex.getRetryAfterSeconds()));
+        headers.add("X-RateLimit-Resource", "login_success");
+        headers.add("X-RateLimit-Error-Code", "LOGIN_SUCCESS_EXCEEDED");
+
+        if (ex.getRequestId() != null) {
+            headers.add("X-Request-ID", ex.getRequestId());
+        }
+
+        return ResponseEntity
+                .status(HttpStatus.TOO_MANY_REQUESTS)
+                .headers(headers)
+                .body(response);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidationExceptions(
             MethodArgumentNotValidException ex, WebRequest request) {

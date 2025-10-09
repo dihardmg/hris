@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -311,5 +312,45 @@ class AuthControllerIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().is(401));
+    }
+
+    @Test
+    void login_WhenAccountSuccessRateLimitExceeded_ShouldReturnTooManyRequests() throws Exception {
+        when(rateLimitingService.isLoginSuccessRateLimited("test@example.com")).thenReturn(true);
+        when(rateLimitingService.getLoginSuccessRateLimitTTL("test@example.com")).thenReturn(180L);
+
+        LoginRequest loginRequest = new LoginRequest();
+        loginRequest.setEmail("test@example.com");
+        loginRequest.setPassword("password123");
+
+        mockMvc.perform(post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().is(429))
+                .andExpect(jsonPath("$.error").value("Too Many Requests"))
+                .andExpect(jsonPath("$.message", containsString("Too many successful login attempts for this account")))
+                .andExpect(jsonPath("$.retryAfter").value(180))
+                .andExpect(jsonPath("$.rateLimitType").value("LOGIN_SUCCESS"))
+                .andExpect(jsonPath("$.email").value("test@example.com"));
+    }
+
+    @Test
+    void login_WhenIPSuccessRateLimitExceeded_ShouldReturnTooManyRequests() throws Exception {
+        when(rateLimitingService.isLoginSuccessRateLimitedByIP(anyString())).thenReturn(true);
+        when(rateLimitingService.getLoginSuccessRateLimitTTLByIP(anyString())).thenReturn(120L);
+
+        LoginRequest loginRequest = new LoginRequest();
+        loginRequest.setEmail("test@example.com");
+        loginRequest.setPassword("password123");
+
+        mockMvc.perform(post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().is(429))
+                .andExpect(jsonPath("$.error").value("Too Many Requests"))
+                .andExpect(jsonPath("$.message", containsString("Too many login attempts from this IP address")))
+                .andExpect(jsonPath("$.retryAfter").value(120))
+                .andExpect(jsonPath("$.rateLimitType").value("LOGIN_SUCCESS"))
+                .andExpect(jsonPath("$.clientIP").exists());
     }
 }

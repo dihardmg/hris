@@ -4,6 +4,7 @@ import hris.hris.dto.ApiResponse;
 import hris.hris.dto.LoginRequest;
 import hris.hris.dto.LoginResponse;
 import hris.hris.exception.RateLimitExceededException;
+import hris.hris.exception.LoginSuccessRateLimitException;
 import hris.hris.service.AuthenticationService;
 import hris.hris.service.RateLimitingService;
 import java.util.HashMap;
@@ -38,13 +39,14 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
         String email = loginRequest.getEmail();
+        String clientIP = getClientIP();
 
+        // Check rate limit for failed login attempts
         if (rateLimitingService.isRateLimited(email)) {
             log.warn("Rate limit exceeded for user: {}", email);
 
             // Get remaining time
             long retryAfterSeconds = rateLimitingService.getRateLimitTTL(email);
-            String clientIP = getClientIP();
 
             // Generate request ID for tracking
             String requestId = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
@@ -58,9 +60,38 @@ public class AuthController {
             ).withRequestId(requestId);
         }
 
+        // Check rate limit for successful login attempts per account
+        if (rateLimitingService.isLoginSuccessRateLimited(email)) {
+            log.warn("Success login rate limit exceeded for account: {}", email);
+
+            long retryAfterSeconds = rateLimitingService.getLoginSuccessRateLimitTTL(email);
+            String requestId = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+
+            throw new LoginSuccessRateLimitException(
+                "Too many successful login attempts for this account. Please wait before trying again.",
+                email,
+                clientIP,
+                retryAfterSeconds > 0 ? retryAfterSeconds : 300L
+            ).withRequestId(requestId);
+        }
+
+        // Check rate limit for successful login attempts per IP
+        if (rateLimitingService.isLoginSuccessRateLimitedByIP(clientIP)) {
+            log.warn("Success login rate limit exceeded for IP: {}", clientIP);
+
+            long retryAfterSeconds = rateLimitingService.getLoginSuccessRateLimitTTLByIP(clientIP);
+            String requestId = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+
+            throw new LoginSuccessRateLimitException(
+                "Too many login attempts from this IP address. Please wait before trying again.",
+                email,
+                clientIP,
+                retryAfterSeconds > 0 ? retryAfterSeconds : 300L
+            ).withRequestId(requestId);
+        }
+
         try {
-            LoginResponse response = authenticationService.authenticateUser(loginRequest);
-            rateLimitingService.recordSuccessfulLogin(email);
+            LoginResponse response = authenticationService.authenticateUser(loginRequest, clientIP);
             return ResponseEntity.ok(ApiResponse.success(response, "Login successful"));
         } catch (Exception e) {
             rateLimitingService.recordFailedLogin(email);

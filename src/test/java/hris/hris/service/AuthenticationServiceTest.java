@@ -42,6 +42,9 @@ class AuthenticationServiceTest {
     @Mock
     private EmployeeRepository employeeRepository;
 
+    @Mock
+    private RateLimitingService rateLimitingService;
+
     @InjectMocks
     private AuthenticationService authenticationService;
 
@@ -95,7 +98,7 @@ class AuthenticationServiceTest {
         when(jwtUtil.generateToken("test@example.com", 1L, "EMP001"))
                 .thenReturn(token);
 
-        LoginResponse response = authenticationService.authenticateUser(loginRequest);
+        LoginResponse response = authenticationService.authenticateUser(loginRequest, "192.168.1.100");
 
         assertNotNull(response);
         assertEquals(token, response.getToken());
@@ -105,6 +108,7 @@ class AuthenticationServiceTest {
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
         verify(employeeRepository).findByEmail("test@example.com");
         verify(jwtUtil).generateToken("test@example.com", 1L, "EMP001");
+        verify(rateLimitingService).recordSuccessfulLogin("test@example.com", "192.168.1.100");
     }
 
     @Test
@@ -114,7 +118,7 @@ class AuthenticationServiceTest {
 
         BadCredentialsException exception = assertThrows(
                 BadCredentialsException.class,
-                () -> authenticationService.authenticateUser(loginRequest)
+                () -> authenticationService.authenticateUser(loginRequest, "192.168.1.100")
         );
 
         assertEquals("Invalid email or password", exception.getMessage());
@@ -133,7 +137,7 @@ class AuthenticationServiceTest {
 
         BadCredentialsException exception = assertThrows(
                 BadCredentialsException.class,
-                () -> authenticationService.authenticateUser(loginRequest)
+                () -> authenticationService.authenticateUser(loginRequest, "192.168.1.100")
         );
 
         assertEquals("Invalid email or password", exception.getMessage());
@@ -150,7 +154,7 @@ class AuthenticationServiceTest {
 
         BadCredentialsException exception = assertThrows(
                 BadCredentialsException.class,
-                () -> authenticationService.authenticateUser(loginRequest)
+                () -> authenticationService.authenticateUser(loginRequest, "192.168.1.100")
         );
 
         assertEquals("Authentication failed", exception.getMessage());
