@@ -66,10 +66,14 @@ For secure environment configuration, see **[Environment Setup Guide](docs/ENVIR
 ### Authentication & Security
 - ✅ **JWT-based authentication** with secure token management (WIB timezone support)
 - ✅ **Password reset functionality** with secure token-based workflow
-- ✅ **Rate limiting** (5 attempts per 5 minutes) to prevent brute force attacks
+- ✅ **Advanced rate limiting** with multi-layer protection:
+  - Failed login limiting: 5 attempts per 5 minutes
+  - Success login limiting: 5 per account, 20 per IP per 5 minutes
+  - Password reset limiting: 3 requests per hour per email
 - ✅ **Password encryption** using BCrypt
 - ✅ **Password history tracking** (prevents reuse of last 5 passwords)
 - ✅ **Role-based access control** (ADMIN, HR, SUPERVISOR, EMPLOYEE)
+- ✅ **Credential stuffing protection** through success login rate limiting
 
 ### Attendance Management
 - ✅ **Clock In/Out** with GPS location tracking
@@ -152,6 +156,11 @@ Content-Type: application/json
 ### POST /api/auth/login
 Login user and return JWT token.
 
+**Rate Limits:**
+- **Failed Login**: 5 attempts per 5 minutes per email/IP
+- **Success Login**: 5 successful logins per 5 minutes per account, 20 per IP
+- **Lockout**: 5 minutes for failed attempts, separate windows for success limits
+
 **Request:**
 ```json
 {
@@ -160,23 +169,41 @@ Login user and return JWT token.
 }
 ```
 
-**Response:**
+**Success Response (200 OK):**
 ```json
 {
   "success": true,
   "message": "Login successful",
   "data": {
     "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "tokenType": "Bearer",
-    "expiresIn": 86400,
-    "employee": {
-      "id": 1,
-      "email": "user@example.com",
-      "firstName": "John",
-      "lastName": "Doe",
-      "role": "EMPLOYEE"
-    }
+    "type": "Bearer",
+    "expiresAt": "2025-01-05T22:00:00.000Z"
   }
+}
+```
+
+**Rate Limit Exceeded Response (429 Too Many Requests):**
+```json
+{
+  "timestamp": "2025-01-04T22:00:00.000Z",
+  "status": 429,
+  "error": "Too Many Requests",
+  "message": "Too many successful login attempts for this account. Please try again later.",
+  "path": "/api/auth/login",
+  "retryAfter": 180,
+  "email": "user@example.com",
+  "rateLimitType": "LOGIN_SUCCESS"
+}
+```
+
+**Failed Authentication Response (401 Unauthorized):**
+```json
+{
+  "timestamp": "2025-01-04T22:00:00.000Z",
+  "status": 401,
+  "error": "Unauthorized",
+  "message": "Invalid email or password",
+  "path": "/api/auth/login"
 }
 ```
 
@@ -997,16 +1024,171 @@ Debug password verification (development only).
 
 ## 🔄 Rate Limiting
 
-### Authentication Endpoints
-- **Login**: 5 attempts per 5 minutes per IP
-- **Password Reset Request**: 3 requests per hour per email
-- **Password Reset Confirm**: 5 attempts per hour per token
+The HRIS system implements comprehensive rate limiting to protect against brute force attacks, credential stuffing, and abuse. Rate limiting is enforced at multiple levels using Redis for distributed tracking.
 
-### Business Rules
-- **Clock In**: Only once per day
+### Authentication Rate Limiting
+
+#### Failed Login Rate Limiting
+- **Failed Attempts**: 5 attempts per 5 minutes per email/IP
+- **Lockout Duration**: 5 minutes after exceeding limit
+- **Reset Condition**: Successful login resets failed attempt counter
+
+#### Success Login Rate Limiting ⭐ **NEW**
+- **Per Account**: 5 successful logins per 5 minutes per email
+- **Per IP Address**: 20 successful logins per 5 minutes per IP
+- **Purpose**: Prevents credential stuffing and automated attacks
+- **Independent Tracking**: Account and IP limits are enforced separately
+
+#### Password Reset Rate Limiting
+- **Reset Request**: 3 requests per hour per email
+- **Reset Confirmation**: 5 attempts per hour per token
+- **Token Expiration**: 1 hour validity period
+
+### Rate Limiting Implementation Details
+
+#### Redis Storage Structure
+```
+Failed Login Attempts:
+Key: rate_limit:{email}
+Value: JSON object with attempt count, lock status, and lock expiry
+
+Success Login Attempts:
+Key: login_success:{email}      # Account-based tracking
+Key: login_success_ip:{ip}      # IP-based tracking
+Value: Atomic counter with TTL
+```
+
+#### Rate Limit Headers
+When rate limits are exceeded, the API returns comprehensive HTTP 429 responses:
+
+```json
+HTTP/1.1 429 Too Many Requests
+Content-Type: application/json
+Retry-After: 180
+X-RateLimit-Limit: 5
+X-RateLimit-Remaining: 0
+X-RateLimit-Used: 6
+X-RateLimit-Reset: 1698765432
+X-RateLimit-Resource: login_success
+X-RateLimit-Window: 5 minutes
+X-RateLimit-Error-Code: LOGIN_SUCCESS_EXCEEDED
+X-Request-ID: req-123456789
+
+{
+  "timestamp": "2025-01-04T22:00:00.000Z",
+  "status": 429,
+  "error": "Too Many Requests",
+  "message": "Too many successful login attempts for this account. Please try again later.",
+  "path": "/api/auth/login",
+  "retryAfter": 180,
+  "email": "user@example.com",
+  "clientIP": "192.168.1.100",
+  "rateLimitType": "LOGIN_SUCCESS"
+}
+```
+
+### Business Rule Rate Limiting
+
+#### Attendance System
+- **Clock In**: Only once per day per employee
+- **Clock Out**: Requires active clock-in session
+- **Face Recognition**: Configurable confidence threshold (default: 0.7)
+- **Geofencing**: 100-meter radius from office coordinates
+
+#### Leave Management
 - **Leave Overlap**: Prevents conflicting leave periods
-- **Business Travel Overlap**: Prevents travel during approved leave
-- **Approval**: Only supervisors can approve subordinate requests
+- **Balance Validation**: Ensures sufficient leave balance
+- **Approval Workflow**: Supervisor hierarchy validation
+
+#### Business Travel
+- **Travel Overlap**: Prevents travel during approved leave
+- **Approval Constraints**: Only supervisors can approve subordinate requests
+
+### Rate Limiting Configuration
+
+```properties
+# Failed Login Rate Limiting
+rate.limit.login.failed.max-attempts=5
+rate.limit.login.failed.window-duration=300000 # 5 minutes
+
+# Success Login Rate Limiting
+rate.limit.login.success.per-account=5
+rate.limit.login.success.per-ip=20
+rate.limit.login.success.window-duration=300000 # 5 minutes
+
+# Password Reset Rate Limiting
+resilience4j.ratelimiter.instances.password-reset-request.limit-for-period=3
+resilience4j.ratelimiter.instances.password-reset-request.limit-refresh-period=1h
+resilience4j.ratelimiter.instances.password-reset-confirm.limit-for-period=5
+resilience4j.ratelimiter.instances.password-reset-confirm.limit-refresh-period=1h
+```
+
+### Security Benefits
+
+#### 🛡️ Attack Prevention
+- **Brute Force**: Failed login limiting prevents password guessing
+- **Credential Stuffing**: Success login limiting prevents automated credential testing
+- **Password Spraying**: IP-based limiting prevents widespread credential attempts
+- **Account Enumeration**: Consistent responses prevent email discovery
+
+#### 📊 Monitoring & Auditing
+- **Comprehensive Logging**: All rate limit violations are logged with context
+- **IP Tracking**: Source IP addresses are monitored for patterns
+- **Request IDs**: Unique identifiers for tracing and debugging
+- **TTL Management**: Automatic cleanup of expired rate limit data
+
+### Rate Limiting Behavior
+
+#### Error Responses
+- **429 Too Many Requests**: Rate limit exceeded
+- **401 Unauthorized**: Invalid credentials (subject to failed login limits)
+- **400 Bad Request**: Invalid input format
+- **500 Internal Server Error**: System errors (not subject to user limits)
+
+#### Rate Limit Reset
+- **Successful Authentication**: Resets failed login counter only
+- **Manual Reset**: Available through admin endpoints
+- **Automatic Expiry**: TTL-based cleanup of all rate limit data
+- **Window Reset**: Counters reset after time window expires
+
+### Testing Rate Limiting
+
+#### Development Testing
+```bash
+# Test failed login rate limiting
+for i in {1..6}; do
+  curl -X POST http://localhost:8081/api/auth/login \
+    -H "Content-Type: application/json" \
+    -d '{"email":"test@example.com","password":"wrong"}'
+done
+
+# Test success login rate limiting (requires valid credentials)
+for i in {1..6}; do
+  curl -X POST http://localhost:8081/api/auth/login \
+    -H "Content-Type: application/json" \
+    -d '{"email":"test@example.com","password":"correct"}'
+done
+```
+
+#### Rate Limit Bypass (Development)
+Rate limiting can be disabled for testing by setting:
+```properties
+rate.limit.enabled=false
+```
+
+### Production Considerations
+
+#### Redis Configuration
+- **High Availability**: Configure Redis clustering for production
+- **Persistence**: Enable Redis persistence for rate limit data
+- **Memory Management**: Monitor Redis memory usage for large deployments
+- **Network Security**: Secure Redis access with authentication and firewalls
+
+#### Monitoring
+- **Rate Limit Metrics**: Monitor rate limit violations
+- **Performance Impact**: Track Redis performance
+- **Security Alerts**: Alert on suspicious rate limit patterns
+- **Capacity Planning**: Scale Redis based on user base
 
 ## 🏗 Project Structure
 
@@ -1255,9 +1437,15 @@ spring.mail.properties.mail.smtp.ssl.trust=smtp.sendgrid.net
 spring.mail.properties.mail.smtp.connectiontimeout=10000
 spring.mail.properties.mail.smtp.timeout=10000
 
-# Rate Limiting
-rate.limit.attempts=5
-rate.limit.window=300000 # 5 minutes
+# Rate Limiting Configuration
+# Failed Login Rate Limiting
+rate.limit.login.failed.max-attempts=5
+rate.limit.login.failed.window-duration=300000 # 5 minutes
+
+# Success Login Rate Limiting (NEW)
+rate.limit.login.success.per-account=5
+rate.limit.login.success.per-ip=20
+rate.limit.login.success.window-duration=300000 # 5 minutes
 
 # Redis Configuration (for rate limiting and caching)
 spring.redis.host=localhost
