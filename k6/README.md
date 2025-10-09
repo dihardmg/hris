@@ -12,6 +12,25 @@ This repository contains comprehensive load testing scripts for the HRIS login A
 | **Soak Test** | Endurance and memory leaks | 10 minutes | 20 | Long-term stability |
 | **Spike Test** | Traffic surge handling | 2 minutes | 5-150 | Recovery capability |
 
+### 🎯 Specific Tests for mcrdik@gmail.com
+
+| Test Type | Purpose | Duration | VUs | Focus Area |
+|-----------|---------|----------|-----|------------|
+| **Quick Test** | Fast validation | 30 seconds | 5 | Basic functionality |
+| **Comprehensive Test** | Detailed analysis | 2 minutes | 5-15 | Performance metrics |
+| **Rate Limiting Test** | User-specific rate limiting | 6 minutes | 1 | Rate limit verification |
+
+**Request Format:**
+```bash
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "mcrdik@gmail.com",
+  "password": "week123"
+}
+```
+
 ## 🏗 Architecture
 
 ```
@@ -54,7 +73,53 @@ k6/
    - Ensure HRIS application is running on `http://localhost:8081`
    - Test users are created in the system
 
-### Running Tests
+### 🎯 Quick Tests for mcrdik@gmail.com
+
+**For immediate testing with the specific user credentials:**
+
+#### 1. Quick Basic Test (30 seconds)
+```bash
+# Simple and fast
+./test-mcrdik.sh quick
+
+# With debug output
+./test-mcrdik.sh -d quick
+
+# Against different server
+./test-mcrdik.sh -u https://api.hris.com quick
+```
+
+#### 2. Comprehensive Test (2 minutes)
+```bash
+# Full-featured test with detailed metrics
+./test-mcrdik.sh basic
+
+# Debug mode for detailed logging
+./test-mcrdik.sh -d basic
+```
+
+#### 3. Rate Limiting Test (6 minutes)
+```bash
+# Test rate limiting behavior for this specific user
+./test-mcrdik.sh rate-limit
+
+# Monitor rate limiting in detail
+./test-mcrdik.sh -d rate-limit
+```
+
+**Direct k6 commands:**
+```bash
+# Quick test
+k6 run tests/quick-login-test.js
+
+# Comprehensive test
+k6 run tests/mcrdik-login-test.js
+
+# Rate limiting test
+k6 run tests/mcrdik-rate-limit-test.js
+```
+
+### 🔄 Full Test Suite
 
 #### 1. Basic Load Test
 ```bash
