@@ -74,10 +74,6 @@ public class AuthenticationService {
 
             return LoginResponse.builder()
                 .token(token)
-                .employeeId(employee.getId())
-                .employeeCode(employee.getEmployeeId())
-                .firstName(employee.getFirstName())
-                .lastName(employee.getLastName())
                 .email(employee.getEmail())
                 .expiresAt(expiresAt)
                 .expiresAtWIB(expiresAtWIBString)

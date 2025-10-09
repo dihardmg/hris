@@ -79,12 +79,8 @@ class AuthControllerIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").exists())
-                .andExpect(jsonPath("$.employeeId").value(testEmployee.getId()))
-                .andExpect(jsonPath("$.employeeCode").value("AUTH001"))
-                .andExpect(jsonPath("$.firstName").value("Test"))
-                .andExpect(jsonPath("$.lastName").value("User"))
-                .andExpect(jsonPath("$.email").value("test@example.com"));
+                .andExpect(jsonPath("$.data.token").exists())
+                .andExpect(jsonPath("$.data.email").value("test@example.com"));
     }
 
     @Test
