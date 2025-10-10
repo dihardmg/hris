@@ -1,6 +1,7 @@
 package hris.hris.controller;
 
 import hris.hris.dto.BusinessTravelRequestDto;
+import hris.hris.dto.BusinessTravelRequestRequestDto;
 import hris.hris.dto.BusinessTravelRequestResponseDto;
 import hris.hris.dto.CityDropdownDto;
 import hris.hris.dto.PaginatedBusinessTravelRequestResponse;
@@ -22,7 +23,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashMap;
 import java.util.UUID;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/business-travel")
@@ -76,23 +79,47 @@ public class BusinessTravelController {
 
     @PostMapping("/request")
     @PreAuthorize("hasRole('EMPLOYEE')")
-    public ResponseEntity<?> createBusinessTravelRequest(@RequestHeader("Authorization") String token,
-                                                        @Valid @RequestBody BusinessTravelRequestDto requestDto) {
+    public ResponseEntity<Object> createBusinessTravelRequest(
+            @RequestHeader("Authorization") String token,
+            @RequestBody BusinessTravelRequestRequestDto requestDto) {
         try {
+            // Manual validation with custom response format
+            Map<String, Object> errors = validateBusinessTravelRequest(requestDto);
+
+            if (!errors.isEmpty()) {
+                // Use LinkedHashMap to maintain insertion order
+                Map<String, Object> response = new LinkedHashMap<>();
+                response.put("code", "400");
+                response.put("status", "BAD_REQUEST");
+                response.put("errors", errors);
+
+                // Log the response for debugging
+                log.info("Validation error response: {}", response);
+
+                return ResponseEntity.badRequest().body(response);
+            }
+
             Long employeeId = jwtUtil.getEmployeeIdFromToken(token.substring(7));
 
-            BusinessTravelRequest travelRequest = businessTravelRequestService.createBusinessTravelRequest(employeeId, requestDto);
+            // Convert request DTO to service DTO with proper LocalDate fields
+            BusinessTravelRequestDto serviceDto = new BusinessTravelRequestDto();
+            serviceDto.setCityId(requestDto.getCityId());
+            serviceDto.setStartDateFromString(requestDto.getStartDate());
+            serviceDto.setEndDateFromString(requestDto.getEndDate());
+            serviceDto.setReason(requestDto.getReason());
 
-            return ResponseEntity.ok(Map.of(
+            BusinessTravelRequest travelRequest = businessTravelRequestService.createBusinessTravelRequest(employeeId, serviceDto);
+
+            return ResponseEntity.status(201).body(Map.of(
+                "success", true,
                 "message", "Business travel request submitted successfully",
                 "data", BusinessTravelRequestResponseDto.fromBusinessTravelRequest(travelRequest)
             ));
 
         } catch (Exception e) {
             log.error("Create business travel request failed", e);
-            return ResponseEntity.badRequest().body(
-                Map.of("message", e.getMessage())
-            );
+            String errorMessage = e.getMessage() != null ? e.getMessage() : "Unknown error occurred";
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", errorMessage));
         }
     }
 
@@ -271,5 +298,87 @@ public class BusinessTravelController {
                 Map.of("message", e.getMessage())
             );
         }
+    }
+
+    private Map<String, Object> validateBusinessTravelRequest(BusinessTravelRequestRequestDto requestDto) {
+        Map<String, Object> errors = new LinkedHashMap<>();
+
+        // Validate cityId
+        java.util.List<String> cityIdErrors = new java.util.ArrayList<>();
+        if (requestDto.getCityId() == null) {
+            cityIdErrors.add("must be not null");
+        } else if (requestDto.getCityId() <= 0) {
+            cityIdErrors.add("only number int");
+        }
+        if (!cityIdErrors.isEmpty()) {
+            errors.put("cityId", cityIdErrors.toArray(new String[0]));
+        }
+
+        // Validate startDate
+        LocalDate startDate = requestDto.getStartDateAsDate();
+        if (requestDto.getStartDate() == null || requestDto.getStartDate().trim().isEmpty()) {
+            errors.put("startDate", new String[]{"must be not null"});
+        } else if (startDate == null) {
+            // Invalid date format
+            errors.put("startDate", new String[]{"format not valid e.g 2025-10-11"});
+        } else {
+            java.util.List<String> startDateErrors = new java.util.ArrayList<>();
+            if (startDate.getYear() < 2000 || startDate.getYear() > 2100) {
+                startDateErrors.add("format not valid e.g 2025-10-11");
+            }
+            if (startDate.isBefore(LocalDate.now())) {
+                startDateErrors.add("must be today or future date");
+            }
+            if (!startDateErrors.isEmpty()) {
+                errors.put("startDate", startDateErrors.toArray(new String[0]));
+            }
+        }
+
+        // Validate endDate
+        LocalDate endDate = requestDto.getEndDateAsDate();
+        if (requestDto.getEndDate() == null || requestDto.getEndDate().trim().isEmpty()) {
+            errors.put("endDate", new String[]{"must be not null"});
+        } else if (endDate == null) {
+            // Invalid date format
+            errors.put("endDate", new String[]{"format not valid e.g 2025-10-11"});
+        } else {
+            java.util.List<String> endDateErrors = new java.util.ArrayList<>();
+            if (endDate.getYear() < 2000 || endDate.getYear() > 2100) {
+                endDateErrors.add("format not valid e.g 2025-10-11");
+            }
+            if (endDate.isBefore(LocalDate.now())) {
+                endDateErrors.add("must be today or future date");
+            }
+            if (!endDateErrors.isEmpty()) {
+                errors.put("endDate", endDateErrors.toArray(new String[0]));
+            }
+        }
+
+        // Validate date range if both dates are present and valid
+        if (startDate != null && endDate != null) {
+            java.util.List<String> dateRangeErrors = new java.util.ArrayList<>();
+
+            if (endDate.isBefore(startDate)) {
+                dateRangeErrors.add("must be after start date");
+            }
+
+            long daysBetween = java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate);
+            if (daysBetween > 365) {
+                dateRangeErrors.add("travel period cannot exceed 365 days");
+            }
+
+            if (!dateRangeErrors.isEmpty()) {
+                // Merge with existing endDate errors if any
+                java.util.List<String> existingEndDateErrors = new java.util.ArrayList<>();
+                if (errors.containsKey("endDate")) {
+                    String[] existing = (String[]) errors.get("endDate");
+                    existingEndDateErrors = new java.util.ArrayList<>(java.util.Arrays.asList(existing));
+                }
+                existingEndDateErrors.addAll(dateRangeErrors);
+                errors.put("endDate", existingEndDateErrors.toArray(new String[0]));
+            }
+        }
+
+        return errors;
     }
 }

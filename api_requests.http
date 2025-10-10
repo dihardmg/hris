@@ -1208,7 +1208,7 @@ Authorization: Bearer {{token}}
 
 {
   "cityId": 1,
-  "startDate": "2025-11-12",
+  "startDate": "2025-",
   "endDate": "2025-11-13",
   "reason": "Client meeting and project discussion"
 }

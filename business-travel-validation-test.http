@@ -1,7 +1,7 @@
 ### =====================================================
-### LEAVE REQUEST VALIDATION TEST SUITE
+### BUSINESS TRAVEL REQUEST VALIDATION TEST SUITE
 ### =====================================================
-### Testing all validation scenarios for submitAnnualLeave endpoint
+### Testing all validation scenarios for submitBusinessTravel endpoint
 
 @hostname = localhost:8081
 @baseUrl = http://{{hostname}}
@@ -12,15 +12,15 @@
 ### =====================================================
 
 ### @name testAllFieldsNull
-POST {{baseUrl}}/api/leave/request
+POST {{baseUrl}}/api/business-travel/request
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "leaveTypeId": "1",
-  "startDate": "2025-10-20",
-  "endDate": "2025-10-20",
-  "reason": "Family vacation - attending wedding ceremony"
+  "cityId": "",
+  "startDate": "",
+  "endDate": "",
+  "reason": "Business trip to meet clients"
 }
 
 > {%
@@ -28,12 +28,12 @@ Authorization: Bearer {{token}}
     client.assert(response.status === 400, "Expected 400 Bad Request");
     client.assert(response.body.code === "400", "Expected code: 400");
     client.assert(response.body.status === "BAD_REQUEST", "Expected status: BAD_REQUEST");
-    client.assert(response.body.errors.leaveTypeId != null, "Expected leaveTypeId errors");
+    client.assert(response.body.errors.cityId != null, "Expected cityId errors");
     client.assert(response.body.errors.startDate != null, "Expected startDate errors");
     client.assert(response.body.errors.endDate != null, "Expected endDate errors");
 
     // Check specific error messages
-    client.assert(response.body.errors.leaveTypeId.includes("must be not null"), "Expected 'must be not null' error for leaveTypeId");
+    client.assert(response.body.errors.cityId.includes("must be not null"), "Expected 'must be not null' error for cityId");
     client.assert(response.body.errors.startDate.includes("format not valid e.g 2025-10-11"), "Expected 'format not valid' error for startDate");
     client.assert(response.body.errors.endDate.includes("format not valid e.g 2025-10-11"), "Expected 'format not valid' error for endDate");
 
@@ -42,32 +42,32 @@ Authorization: Bearer {{token}}
   });
 %}
 
-### @name testLeaveTypeIdMissing
-POST {{baseUrl}}/api/leave/request
+### @name testCityIdMissing
+POST {{baseUrl}}/api/business-travel/request
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
   "startDate": "2025-12-29",
-  "endDate": "2025-12-29",
-  "reason": "Test without leaveTypeId"
+  "endDate": "2025-12-30",
+  "reason": "Test without cityId"
 }
 
 > {%
-  client.test("Missing leaveTypeId validation", function() {
+  client.test("Missing cityId validation", function() {
     client.assert(response.status === 400, "Expected 400 Bad Request");
-    client.assert(response.body.errors.leaveTypeId != null, "Expected leaveTypeId errors");
-    client.assert(response.body.errors.leaveTypeId.includes("must be not null"), "Expected null validation error");
+    client.assert(response.body.errors.cityId != null, "Expected cityId errors");
+    client.assert(response.body.errors.cityId.includes("must be not null"), "Expected null validation error");
   });
 %}
 
 ### @name testDatesMissing
-POST {{baseUrl}}/api/leave/request
+POST {{baseUrl}}/api/business-travel/request
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "leaveTypeId": 1,
+  "cityId": 1,
   "reason": "Test without dates"
 }
 
@@ -84,55 +84,55 @@ Authorization: Bearer {{token}}
 ### 2. VALIDATION TESTS - INVALID VALUES
 ### =====================================================
 
-### @name testNegativeLeaveTypeId
-POST {{baseUrl}}/api/leave/request
+### @name testNegativeCityId
+POST {{baseUrl}}/api/business-travel/request
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "leaveTypeId": -1,
+  "cityId": -1,
   "startDate": "2025-12-29",
-  "endDate": "2025-12-29",
-  "reason": "Test with negative leaveTypeId"
+  "endDate": "2025-12-30",
+  "reason": "Test with negative cityId"
 }
 
 > {%
-  client.test("Negative leaveTypeId validation", function() {
+  client.test("Negative cityId validation", function() {
     client.assert(response.status === 400, "Expected 400 Bad Request");
-    client.assert(response.body.errors.leaveTypeId != null, "Expected leaveTypeId errors");
-    client.assert(response.body.errors.leaveTypeId.includes("only number int"), "Expected positive number validation error");
+    client.assert(response.body.errors.cityId != null, "Expected cityId errors");
+    client.assert(response.body.errors.cityId.includes("only number int"), "Expected positive number validation error");
   });
 %}
 
-### @name testZeroLeaveTypeId
-POST {{baseUrl}}/api/leave/request
+### @name testZeroCityId
+POST {{baseUrl}}/api/business-travel/request
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "leaveTypeId": 0,
+  "cityId": 0,
   "startDate": "2025-12-29",
-  "endDate": "2025-12-29",
-  "reason": "Test with zero leaveTypeId"
+  "endDate": "2025-12-30",
+  "reason": "Test with zero cityId"
 }
 
 > {%
-  client.test("Zero leaveTypeId validation", function() {
+  client.test("Zero cityId validation", function() {
     client.assert(response.status === 400, "Expected 400 Bad Request");
-    client.assert(response.body.errors.leaveTypeId != null, "Expected leaveTypeId errors");
-    client.assert(response.body.errors.leaveTypeId.includes("only number int"), "Expected positive number validation error");
+    client.assert(response.body.errors.cityId != null, "Expected cityId errors");
+    client.assert(response.body.errors.cityId.includes("only number int"), "Expected positive number validation error");
   });
 %}
 
 ### @name testInvalidDateFormat
-POST {{baseUrl}}/api/leave/request
+POST {{baseUrl}}/api/business-travel/request
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "leaveTypeId": 1,
+  "cityId": 1,
   "startDate": "2025/12/29",
-  "endDate": "2025-12-29",
+  "endDate": "2025-12-30",
   "reason": "Test with invalid date format"
 }
 
@@ -145,14 +145,14 @@ Authorization: Bearer {{token}}
 %}
 
 ### @name testMalformedDate
-POST {{baseUrl}}/api/leave/request
+POST {{baseUrl}}/api/business-travel/request
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "leaveTypeId": 1,
+  "cityId": 1,
   "startDate": "2025-13-45",
-  "endDate": "2025-12-29",
+  "endDate": "2025-12-30",
   "reason": "Test with malformed date"
 }
 
@@ -165,12 +165,12 @@ Authorization: Bearer {{token}}
 %}
 
 ### @name testPastDate
-POST {{baseUrl}}/api/leave/request
+POST {{baseUrl}}/api/business-travel/request
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "leaveTypeId": 1,
+  "cityId": 1,
   "startDate": "2020-01-01",
   "endDate": "2020-01-02",
   "reason": "Test with past date"
@@ -189,12 +189,12 @@ Authorization: Bearer {{token}}
 ### =====================================================
 
 ### @name testEndDateBeforeStartDate
-POST {{baseUrl}}/api/leave/request
+POST {{baseUrl}}/api/business-travel/request
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "leaveTypeId": 1,
+  "cityId": 1,
   "startDate": "2025-12-30",
   "endDate": "2025-12-29",
   "reason": "Test with end date before start date"
@@ -208,45 +208,23 @@ Authorization: Bearer {{token}}
   });
 %}
 
-### @name testPastDateValidation
-POST {{baseUrl}}/api/leave/request
+### @name testExcessiveTravelPeriod
+POST {{baseUrl}}/api/business-travel/request
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "leaveTypeId": 1,
-  "startDate": "2020-01-01",
-  "endDate": "2020-01-02",
-  "reason": "Test with past dates"
-}
-
-> {%
-  client.test("Past date validation", function() {
-    client.assert(response.status === 400, "Expected 400 Bad Request");
-    client.assert(response.body.errors.startDate != null, "Expected startDate errors");
-    client.assert(response.body.errors.endDate != null, "Expected endDate errors");
-    client.assert(response.body.errors.startDate.includes("must be today or future date"), "Expected past date error for startDate");
-    client.assert(response.body.errors.endDate.includes("must be today or future date"), "Expected past date error for endDate");
-  });
-%}
-
-### @name testExcessiveLeavePeriod
-POST {{baseUrl}}/api/leave/request
-Content-Type: application/json
-Authorization: Bearer {{token}}
-
-{
-  "leaveTypeId": 1,
+  "cityId": 1,
   "startDate": "2025-01-01",
   "endDate": "2026-01-02",
-  "reason": "Test with excessive leave period"
+  "reason": "Test with excessive travel period"
 }
 
 > {%
-  client.test("Excessive leave period validation", function() {
+  client.test("Excessive travel period validation", function() {
     client.assert(response.status === 400, "Expected 400 Bad Request");
     client.assert(response.body.errors.endDate != null, "Expected endDate errors");
-    client.assert(response.body.errors.endDate.includes("leave period cannot exceed 365 days"), "Expected excessive period validation error");
+    client.assert(response.body.errors.endDate.includes("travel period cannot exceed 365 days"), "Expected excessive period validation error");
   });
 %}
 
@@ -255,12 +233,12 @@ Authorization: Bearer {{token}}
 ### =====================================================
 
 ### @name testMultipleValidationErrors
-POST {{baseUrl}}/api/leave/request
+POST {{baseUrl}}/api/business-travel/request
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "leaveTypeId": -5,
+  "cityId": -5,
   "startDate": "1990-01-01",
   "endDate": "1990-01-01",
   "reason": "Test multiple validation errors"
@@ -269,13 +247,13 @@ Authorization: Bearer {{token}}
 > {%
   client.test("Multiple validation errors", function() {
     client.assert(response.status === 400, "Expected 400 Bad Request");
-    client.assert(response.body.errors.leaveTypeId != null, "Expected leaveTypeId errors");
+    client.assert(response.body.errors.cityId != null, "Expected cityId errors");
     client.assert(response.body.errors.startDate != null, "Expected startDate errors");
     client.assert(response.body.errors.endDate != null, "Expected endDate errors");
     client.assert(Object.keys(response.body.errors).length >= 3, "Expected multiple field errors");
 
     // Check specific error messages for multiple errors
-    client.assert(response.body.errors.leaveTypeId.includes("only number int"), "Expected 'only number int' error for negative leaveTypeId");
+    client.assert(response.body.errors.cityId.includes("only number int"), "Expected 'only number int' error for negative cityId");
     client.assert(response.body.errors.startDate.length >= 2, "Expected multiple errors for startDate");
     client.assert(response.body.errors.endDate.length >= 2, "Expected multiple errors for endDate");
   });
@@ -286,15 +264,15 @@ Authorization: Bearer {{token}}
 ### =====================================================
 
 ### @name testValidRequest
-POST {{baseUrl}}/api/leave/request
+POST {{baseUrl}}/api/business-travel/request
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "leaveTypeId": 1,
-  "startDate": "2025-12-29",
-  "endDate": "2025-12-29",
-  "reason": "Family vacation - attending wedding ceremony"
+  "cityId": 1,
+  "startDate": "2025-10-19",
+  "endDate": "2025-10-20",
+  "reason": "Business trip to meet clients and attend conference"
 }
 
 > {%
@@ -306,15 +284,15 @@ Authorization: Bearer {{token}}
 %}
 
 ### @name testResponseFormatStructure
-POST {{baseUrl}}/api/leave/request
+POST {{baseUrl}}/api/business-travel/request
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "leaveTypeId": "",
+  "cityId": "",
   "startDate": "2025",
   "endDate": "2025-10",
-  "reason": "Family vacation - attending wedding ceremony"
+  "reason": "Business trip - meeting clients"
 }
 
 > {%
@@ -331,12 +309,12 @@ Authorization: Bearer {{token}}
     client.assert(response.body.status === "BAD_REQUEST", "Status should be exactly 'BAD_REQUEST'");
 
     // Check errors structure - should be arrays
-    client.assert(Array.isArray(response.body.errors.leaveTypeId), "leaveTypeId errors should be an array");
+    client.assert(Array.isArray(response.body.errors.cityId), "cityId errors should be an array");
     client.assert(Array.isArray(response.body.errors.startDate), "startDate errors should be an array");
     client.assert(Array.isArray(response.body.errors.endDate), "endDate errors should be an array");
 
     // Check specific error messages for this test case
-    client.assert(response.body.errors.leaveTypeId.includes("must be not null"), "Should have 'must be not null' error for leaveTypeId");
+    client.assert(response.body.errors.cityId.includes("must be not null"), "Should have 'must be not null' error for cityId");
     client.assert(response.body.errors.startDate.includes("format not valid e.g 2025-10-11"), "Should have 'format not valid' error for startDate");
     client.assert(response.body.errors.endDate.includes("format not valid e.g 2025-10-11"), "Should have 'format not valid' error for endDate");
 
@@ -370,12 +348,12 @@ Authorization: Bearer {{token}}
 #
 # This test suite validates:
 #
-# ✅ Required field validation (leaveTypeId, startDate, endDate)
-# ✅ Positive integer validation for leaveTypeId
+# ✅ Required field validation (cityId, startDate, endDate)
+# ✅ Positive integer validation for cityId
 # ✅ Date format validation (YYYY-MM-DD)
 # ✅ Past date validation
 # ✅ Date comparison logic (endDate must be >= startDate)
-# ✅ Maximum leave period validation (<= 365 days)
+# ✅ Maximum travel period validation (<= 365 days)
 # ✅ Multiple validation errors handling
 # ✅ Correct error response format with code, status, and errors array
 # ✅ Success case with valid data
@@ -385,7 +363,7 @@ Authorization: Bearer {{token}}
 #   "code": "400",
 #   "status": "BAD_REQUEST",
 #   "errors": {
-#     "leaveTypeId": ["must be not null", "only number int"],
+#     "cityId": ["must be not null", "only number int"],
 #     "startDate": ["must be not null", "format YYYY-MM-DD"],
 #     "endDate": ["must be not null", "format YYYY-MM-DD"]
 #   }
