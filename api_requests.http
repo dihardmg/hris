@@ -1182,7 +1182,7 @@ GET {{baseUrl}}/api/cities/dropdown?province=Jawa Barat
 %}
 
 ### @name getAllCitiesPaginated
-GET {{baseUrl}}/api/cities?page=0&size=5
+GET {{baseUrl}}/api/cities?page=0&size=100
 
 > {%
   if (response.status === 200) {
@@ -1290,7 +1290,7 @@ GET {{baseUrl}}/api/business-travel/request/{{businessTravelUuid}}
 Authorization: Bearer {{supervisorToken}}
 
 ### @name getNonExistentBusinessTravelRequestByUuid
-GET {{baseUrl}}/api/business-travel/request/4d5d4101-6fbe-408e-b473-884b620d31e6
+GET {{baseUrl}}/api/business-travel/request/4d5d4101-6fbe-408e-b473-884b620d3166
 Authorization: Bearer {{token}}
 
 ### @name getCurrentBusinessTravel

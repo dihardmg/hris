@@ -349,6 +349,39 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(httpStatus).body(response);
     }
 
+    @ExceptionHandler(BusinessTravelRequestException.class)
+    public ResponseEntity<Map<String, Object>> handleBusinessTravelRequestException(
+            BusinessTravelRequestException ex, WebRequest request) {
+        log.warn("Business travel request business error: {}", ex.getMessage());
+
+        // Determine HTTP status based on error type
+        HttpStatus httpStatus;
+        String errorLabel;
+
+        if (ex.getErrorType() == BusinessTravelRequestException.BusinessTravelErrorType.NOT_FOUND) {
+            httpStatus = HttpStatus.NOT_FOUND;
+            errorLabel = "Not Found";
+        } else {
+            httpStatus = HttpStatus.CONFLICT;
+            errorLabel = "Conflict";
+        }
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        response.put("status", httpStatus.value());
+        response.put("error", errorLabel);
+        response.put("errorCode", ex.getErrorCode());
+        response.put("message", ex.getMessage());
+        response.put("path", request.getDescription(false).replace("uri=", ""));
+
+        // Add details if available
+        if (ex.getDetails() != null) {
+            response.put("details", ex.getDetails());
+        }
+
+        return ResponseEntity.status(httpStatus).body(response);
+    }
+
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<Map<String, Object>> handleBusinessException(
             BusinessException ex, WebRequest request) {

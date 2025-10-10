@@ -7,6 +7,7 @@ import hris.hris.dto.CityDropdownDto;
 import hris.hris.dto.PaginatedBusinessTravelRequestResponse;
 import hris.hris.dto.PaginatedCityDropdownResponse;
 import hris.hris.dto.PageInfo;
+import hris.hris.exception.BusinessTravelRequestException;
 import hris.hris.model.BusinessTravelRequest;
 import hris.hris.security.JwtUtil;
 import hris.hris.service.BusinessTravelRequestService;
@@ -175,7 +176,7 @@ public class BusinessTravelController {
 
             var travelRequestOptional = businessTravelRequestService.getBusinessTravelRequestByUuid(uuid);
             if (travelRequestOptional.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("message", "Business travel request not found"));
+                throw new BusinessTravelRequestException(BusinessTravelRequestException.BusinessTravelErrorType.NOT_FOUND);
             }
 
             BusinessTravelRequest travelRequest = travelRequestOptional.get();
