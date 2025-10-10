@@ -3,7 +3,7 @@ package hris.hris.exception;
 public class LeaveRequestException extends BusinessException {
 
     public enum LeaveErrorType {
-        NOT_FOUND("LEAVE_NOT_FOUND", "Leave request not found"),
+        NOT_FOUND("DATA_NOT_FOUND", "Leave request not found"),
         NOT_PENDING("LEAVE_NOT_PENDING", "Leave request is not in pending status"),
         ALREADY_APPROVED("LEAVE_ALREADY_APPROVED", "Leave request has already been approved"),
         ALREADY_REJECTED("LEAVE_ALREADY_REJECTED", "Leave request has already been rejected"),

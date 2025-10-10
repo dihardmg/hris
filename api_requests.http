@@ -308,7 +308,7 @@ GET {{baseUrl}}/api/attendance/{{attendanceUuid}}
 Authorization: Bearer {{adminToken}}
 
 ### @name getNonExistentAttendanceByUuid
-GET {{baseUrl}}/api/attendance/74dfbcdd-8ae8-4476-8f58-ae81f367da54
+GET {{baseUrl}}/api/attendance/74dfbcdd-8ae8-4476-8f58-ae81f367da55
 Authorization: Bearer {{token}}
 
 ### =====================================================
