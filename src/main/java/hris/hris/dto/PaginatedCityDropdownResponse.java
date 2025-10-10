@@ -12,6 +12,6 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PaginatedCityDropdownResponse {
-    private List<CityDropdownDto> cities;
+    private List<CityDropdownDto> data;
     private PageInfo page;
 }

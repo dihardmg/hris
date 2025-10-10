@@ -66,7 +66,7 @@ public class BusinessTravelController {
                     .build();
 
             PaginatedCityDropdownResponse response = PaginatedCityDropdownResponse.builder()
-                    .cities(citiesPage.getContent())
+                    .data(citiesPage.getContent())
                     .page(pageInfo)
                     .build();
             

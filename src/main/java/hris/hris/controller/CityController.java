@@ -71,7 +71,7 @@ public class CityController {
                     .build();
 
             PaginatedCityDropdownResponse response = PaginatedCityDropdownResponse.builder()
-                    .cities(citiesPage.getContent())
+                    .data(citiesPage.getContent())
                     .page(pageInfo)
                     .build();
 
@@ -85,7 +85,7 @@ public class CityController {
         } catch (Exception e) {
             log.error("Error retrieving cities", e);
             PaginatedCityDropdownResponse errorResponse = PaginatedCityDropdownResponse.builder()
-                    .cities(List.of())
+                    .data(List.of())
                     .page(PageInfo.builder()
                             .size(size)
                             .total(0)
