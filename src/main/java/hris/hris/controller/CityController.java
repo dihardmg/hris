@@ -3,12 +3,17 @@ package hris.hris.controller;
 import hris.hris.dto.ApiResponse;
 import hris.hris.dto.CityDto;
 import hris.hris.dto.CityDropdownDto;
+import hris.hris.dto.PaginatedCityDropdownResponse;
+import hris.hris.dto.PageInfo;
 import hris.hris.service.CityService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Map;
@@ -51,17 +56,44 @@ public class CityController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<CityDropdownDto>>> getAllCities() {
+    public ResponseEntity<PaginatedCityDropdownResponse> getAllCities(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
         try {
-            List<CityDropdownDto> cities = cityService.getAllActiveCitiesForDropdown();
-            log.info("Retrieved {} active cities", cities.size());
+            Pageable pageable = PageRequest.of(page, size);
+            Page<CityDropdownDto> citiesPage = cityService.getAllActiveCitiesForDropdown(pageable);
 
-            return ResponseEntity.ok(ApiResponse.success(cities, "Cities retrieved successfully"));
+            PageInfo pageInfo = PageInfo.builder()
+                    .size(citiesPage.getSize())
+                    .total(citiesPage.getTotalElements())
+                    .totalPages(citiesPage.getTotalPages())
+                    .current(citiesPage.getNumber() + 1)
+                    .build();
+
+            PaginatedCityDropdownResponse response = PaginatedCityDropdownResponse.builder()
+                    .cities(citiesPage.getContent())
+                    .page(pageInfo)
+                    .build();
+
+            log.info("Retrieved {} active cities (page {} of {})",
+                    citiesPage.getContent().size(),
+                    citiesPage.getNumber() + 1,
+                    citiesPage.getTotalPages());
+
+            return ResponseEntity.ok(response);
 
         } catch (Exception e) {
             log.error("Error retrieving cities", e);
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Failed to retrieve cities: " + e.getMessage()));
+            PaginatedCityDropdownResponse errorResponse = PaginatedCityDropdownResponse.builder()
+                    .cities(List.of())
+                    .page(PageInfo.builder()
+                            .size(size)
+                            .total(0)
+                            .totalPages(0)
+                            .current(0)
+                            .build())
+                    .build();
+            return ResponseEntity.badRequest().body(errorResponse);
         }
     }
 
