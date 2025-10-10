@@ -274,10 +274,13 @@ public class LeaveRequestController {
         int remainingBalance = leaveRequestService.getAvailableLeaveBalance(employee, leaveRequest.getLeaveType());
         LeaveRequestResponseDto responseDto = LeaveRequestResponseDto.fromLeaveRequest(leaveRequest, remainingBalance);
 
-        return ResponseEntity.ok(Map.of(
-            "data", responseDto,
-            "message", "Leave record retrieved successfully"
-        ));
+        // Create response with new format: code, status, data
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("code", 200);
+        response.put("status", "OK");
+        response.put("data", responseDto);
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/current")
