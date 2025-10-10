@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashMap;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -190,7 +191,14 @@ public class AttendanceController {
             }
 
             AttendanceDto attendanceDto = attendanceService.mapToDto(attendanceEntity);
-            return ResponseEntity.ok(ApiResponse.success(attendanceDto, "Attendance record retrieved successfully"));
+
+            // Create response with new format: code, status, data
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("code", 200);
+            response.put("status", "OK");
+            response.put("data", attendanceDto);
+
+            return ResponseEntity.ok(response);
 
         } catch (AttendanceException e) {
             throw e;
