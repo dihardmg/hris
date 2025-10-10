@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestController
@@ -101,15 +102,39 @@ public class PasswordResetController {
     }
 
     // Fallback methods for rate limiting
-    public ResponseEntity<PasswordResetResponse> handlePasswordResetRateLimit(
+    public ResponseEntity<Map<String, Object>> handlePasswordResetRateLimit(
             PasswordResetRequest request, HttpServletRequest httpRequest, Exception e) {
 
         log.warn("Password reset request rate limited for IP: {}", getClientIp(httpRequest));
 
-        PasswordResetResponse response = PasswordResetResponse.builder()
-                .message("Too many password reset requests. Please try again later.")
-                .success(false)
-                .build();
+        // Create rate limit response with new format: code, status, data
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("code", "429");
+        response.put("status", "TO_MANY_REQUEST");
+
+        // Create data object with rate limit details
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("error", "PASSWORD_RESET_RATE_LIMIT_EXCEEDED");
+        data.put("errorType", "PASSWORD_RESET_RATE_LIMIT_EXCEEDED");
+        data.put("errorCode", "PASSWORD_RESET_RATE_LIMIT_EXCEEDED");
+        data.put("message", "Too many password reset requests. Please try again later.");
+        data.put("retryAfterSeconds", null);
+        data.put("retryAfterMinutes", null);
+        data.put("retryAfterDateTime", null);
+        data.put("lockEndTime", null);
+        data.put("maxAttempts", null);
+        data.put("currentAttempts", null);
+        data.put("remainingAttempts", null);
+        data.put("resetTimeUnix", null);
+        data.put("resourceType", "PASSWORD_RESET");
+        data.put("windowType", "PER_SESSION");
+        data.put("nextAction", "WAIT");
+        data.put("requestId", null);
+        data.put("timestamp", java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        data.put("email", request != null ? request.getEmail() : null);
+        data.put("clientIP", getClientIp(httpRequest));
+
+        response.put("data", data);
 
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(response);
     }

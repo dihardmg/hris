@@ -86,7 +86,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(RateLimitExceededException.class)
-    public ResponseEntity<ApiResponse<?>> handleRateLimitExceededException(
+    public ResponseEntity<Map<String, Object>> handleRateLimitExceededException(
             RateLimitExceededException ex, WebRequest request) {
 
         log.warn("Rate limit exceeded for email: {}, IP: {}, Message: {}",
@@ -129,8 +129,35 @@ public class GlobalExceptionHandler {
             }
         }
 
-        // Return enhanced rate limit response
-        ApiResponse<RateLimitResponse> response = ApiResponse.error(rateLimitResponse);
+        // Create rate limit response with new format: code, status, data
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("code", "429");
+        response.put("status", "TO_MANY_REQUEST");
+
+        // Create data object with all rate limit details
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("error", rateLimitResponse != null ? rateLimitResponse.getErrorCode() : "RATE_LIMIT_EXCEEDED");
+        data.put("errorType", rateLimitResponse != null ? rateLimitResponse.getErrorCode() : "RATE_LIMIT_EXCEEDED");
+        data.put("errorCode", rateLimitResponse != null ? rateLimitResponse.getErrorCode() : "RATE_LIMIT_EXCEEDED");
+        data.put("message", ex.getMessage());
+        data.put("retryAfterSeconds", rateLimitResponse != null ? rateLimitResponse.getRetryAfterSeconds() : null);
+        data.put("retryAfterMinutes", rateLimitResponse != null && rateLimitResponse.getRetryAfterSeconds() != null ?
+                rateLimitResponse.getRetryAfterSeconds() / 60 : null);
+        data.put("retryAfterDateTime", rateLimitResponse != null ? rateLimitResponse.getRetryAfterDateTime() : null);
+        data.put("lockEndTime", rateLimitResponse != null ? rateLimitResponse.getRetryAfterDateTime() : null);
+        data.put("maxAttempts", rateLimitResponse != null ? rateLimitResponse.getMaxAttempts() : null);
+        data.put("currentAttempts", rateLimitResponse != null ? rateLimitResponse.getCurrentAttempts() : null);
+        data.put("remainingAttempts", rateLimitResponse != null ? rateLimitResponse.getRemainingAttempts() : null);
+        data.put("resetTimeUnix", rateLimitResponse != null ? rateLimitResponse.getResetTimeUnix() : null);
+        data.put("resourceType", rateLimitResponse != null ? rateLimitResponse.getResourceType() : "UNKNOWN");
+        data.put("windowType", rateLimitResponse != null ? rateLimitResponse.getWindowType() : "UNKNOWN");
+        data.put("nextAction", "WAIT");
+        data.put("requestId", rateLimitResponse != null ? rateLimitResponse.getRequestId() : null);
+        data.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        data.put("email", ex.getEmail());
+        data.put("clientIP", ex.getClientIP());
+
+        response.put("data", data);
 
         return ResponseEntity
                 .status(HttpStatus.TOO_MANY_REQUESTS)
@@ -145,21 +172,6 @@ public class GlobalExceptionHandler {
         log.warn("Success login rate limit exceeded for email: {}, IP: {}, Message: {}",
                 ex.getEmail(), ex.getClientIP(), ex.getMessage());
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-        response.put("status", HttpStatus.TOO_MANY_REQUESTS.value());
-        response.put("error", "Too Many Requests");
-        response.put("message", ex.getMessage());
-        response.put("path", request.getDescription(false).replace("uri=", ""));
-        response.put("retryAfter", ex.getRetryAfterSeconds());
-        response.put("email", ex.getEmail());
-        response.put("clientIP", ex.getClientIP());
-        response.put("rateLimitType", "LOGIN_SUCCESS");
-
-        if (ex.getRequestId() != null) {
-            response.put("requestId", ex.getRequestId());
-        }
-
         // Create response headers following RESTful best practices
         HttpHeaders headers = new HttpHeaders();
         headers.add("Retry-After", String.valueOf(ex.getRetryAfterSeconds()));
@@ -169,6 +181,36 @@ public class GlobalExceptionHandler {
         if (ex.getRequestId() != null) {
             headers.add("X-Request-ID", ex.getRequestId());
         }
+
+        // Create rate limit response with new format: code, status, data
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("code", "429");
+        response.put("status", "TO_MANY_REQUEST");
+
+        // Create data object with all rate limit details
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("error", "LOGIN_SUCCESS_EXCEEDED");
+        data.put("errorType", "LOGIN_SUCCESS_EXCEEDED");
+        data.put("errorCode", "LOGIN_SUCCESS_EXCEEDED");
+        data.put("message", ex.getMessage());
+        data.put("retryAfterSeconds", ex.getRetryAfterSeconds());
+        data.put("retryAfterMinutes", ex.getRetryAfterSeconds() / 60);
+        data.put("retryAfterDateTime", LocalDateTime.now().plusSeconds(ex.getRetryAfterSeconds()).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        data.put("lockEndTime", LocalDateTime.now().plusSeconds(ex.getRetryAfterSeconds()).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        data.put("maxAttempts", null);
+        data.put("currentAttempts", null);
+        data.put("remainingAttempts", null);
+        data.put("resetTimeUnix", ex.getRetryAfterSeconds());
+        data.put("resourceType", "LOGIN_SUCCESS");
+        data.put("windowType", "PER_SESSION");
+        data.put("nextAction", "WAIT");
+        data.put("requestId", ex.getRequestId());
+        data.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        data.put("email", ex.getEmail());
+        data.put("clientIP", ex.getClientIP());
+        data.put("rateLimitType", "LOGIN_SUCCESS");
+
+        response.put("data", data);
 
         return ResponseEntity
                 .status(HttpStatus.TOO_MANY_REQUESTS)
