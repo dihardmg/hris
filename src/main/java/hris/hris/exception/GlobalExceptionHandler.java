@@ -18,6 +18,7 @@ import org.springframework.web.context.request.WebRequest;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestControllerAdvice
@@ -180,7 +181,7 @@ public class GlobalExceptionHandler {
             MethodArgumentNotValidException ex, WebRequest request) {
         log.warn("Validation error: {}", ex.getMessage());
 
-        Map<String, Object> errors = new HashMap<>();
+        Map<String, Object> errors = new LinkedHashMap<>();
         ex.getBindingResult().getAllErrors().forEach((error) -> {
             String fieldName = ((FieldError) error).getField();
             String errorMessage = error.getDefaultMessage();
@@ -204,7 +205,7 @@ public class GlobalExceptionHandler {
             }
         });
 
-        Map<String, Object> response = new HashMap<>();
+        Map<String, Object> response = new LinkedHashMap<>();
         response.put("code", "400");
         response.put("status", "BAD_REQUEST");
         response.put("errors", errors);
@@ -255,7 +256,7 @@ public class GlobalExceptionHandler {
             LeaveRequestValidationException ex, WebRequest request) {
         log.warn("Leave request validation error: {}", ex.getMessage());
 
-        Map<String, Object> response = new HashMap<>();
+        Map<String, Object> response = new LinkedHashMap<>();
         response.put("code", "400");
         response.put("status", "BAD_REQUEST");
         response.put("errors", ex.getErrors());
