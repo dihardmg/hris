@@ -11,7 +11,7 @@
 @baseUrl = http://{{hostname}}
 
 # --- AUTHENTICATION TOKENS (Update after login) ---
-@token = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJtY3JkaWtAZ21haWwuY29tIiwiZW1wbG95ZWVJZCI6NDE0NiwiZW1wbG95ZWVDb2RlIjoiRU1QNjcxMzkiLCJ0aW1lem9uZSI6IkFzaWEvSmFrYXJ0YSIsImlhdCI6MTc1OTk5OTYyNywiZXhwIjoxNzYwMDg2MDI3fQ.-c9drVQYohRNePvuqab5jW5MkIch3yag6ofSkTcfRBLyUPMmg9iZMaEkmocBhGzy
+@token = eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJtY3JkaWtAZ21haWwuY29tIiwiZW1wbG95ZWVJZCI6NDE0NiwiZW1wbG95ZWVDb2RlIjoiRU1QNjcxMzkiLCJ0aW1lem9uZSI6IkFzaWEvSmFrYXJ0YSIsImlhdCI6MTc2MDA3NDU1OCwiZXhwIjoxNzYwMTYwOTU4fQ.c9mclAqTTnApRAjZMCA7HnJCHeDdAVeUygpU57NIajqdxM0cnfB3H94egOtkPf9F5d88zWzMil808QW_ZqVUFA
 @adminToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 
@@ -321,9 +321,9 @@ Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "leaveTypeId": 1,
-  "startDate": "2025-12-23",
-  "endDate": "2025-12-23",
+  "leaveTypeId": "",
+  "startDate": "2025",
+  "endDate": "2025-10",
   "reason": "Family vacation - attending wedding ceremony"
 }
 

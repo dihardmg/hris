@@ -180,20 +180,34 @@ public class GlobalExceptionHandler {
             MethodArgumentNotValidException ex, WebRequest request) {
         log.warn("Validation error: {}", ex.getMessage());
 
-        Map<String, String> errors = new HashMap<>();
+        Map<String, Object> errors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach((error) -> {
             String fieldName = ((FieldError) error).getField();
             String errorMessage = error.getDefaultMessage();
-            errors.put(fieldName, errorMessage);
+
+            // If field already has errors, add to list
+            if (errors.containsKey(fieldName)) {
+                Object existingError = errors.get(fieldName);
+                if (existingError instanceof java.util.List) {
+                    ((java.util.List<String>) existingError).add(errorMessage);
+                } else {
+                    java.util.List<String> errorList = new java.util.ArrayList<>();
+                    errorList.add((String) existingError);
+                    errorList.add(errorMessage);
+                    errors.put(fieldName, errorList);
+                }
+            } else {
+                // Create single error list for each field
+                java.util.List<String> errorList = new java.util.ArrayList<>();
+                errorList.add(errorMessage);
+                errors.put(fieldName, errorList);
+            }
         });
 
         Map<String, Object> response = new HashMap<>();
-        response.put("timestamp", LocalDateTime.now());
-        response.put("status", HttpStatus.BAD_REQUEST.value());
-        response.put("error", "Validation Failed");
-        response.put("message", "Request validation failed");
+        response.put("code", "400");
+        response.put("status", "BAD_REQUEST");
         response.put("errors", errors);
-        response.put("path", request.getDescription(false).replace("uri=", ""));
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
@@ -234,6 +248,19 @@ public class GlobalExceptionHandler {
         }
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(LeaveRequestValidationException.class)
+    public ResponseEntity<Map<String, Object>> handleLeaveRequestValidationException(
+            LeaveRequestValidationException ex, WebRequest request) {
+        log.warn("Leave request validation error: {}", ex.getMessage());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("code", "400");
+        response.put("status", "BAD_REQUEST");
+        response.put("errors", ex.getErrors());
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
     @ExceptionHandler(AttendanceException.class)

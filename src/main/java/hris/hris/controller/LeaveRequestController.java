@@ -2,6 +2,7 @@ package hris.hris.controller;
 
 import hris.hris.dto.ApiResponse;
 import hris.hris.dto.LeaveRequestDto;
+import hris.hris.dto.LeaveRequestRequestDto;
 import hris.hris.dto.LeaveRequestResponseDto;
 import hris.hris.dto.PaginatedLeaveRequestResponse;
 import hris.hris.exception.LeaveRequestException;
@@ -25,7 +26,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.UUID;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/leave")
@@ -57,13 +61,37 @@ public class LeaveRequestController {
 
     @PostMapping("/request")
     @PreAuthorize("hasRole('EMPLOYEE')")
-    public ResponseEntity<ApiResponse<LeaveRequestResponseDto>> createLeaveRequest(
+    public ResponseEntity<Object> createLeaveRequest(
             @RequestHeader(value = "Authorization", required = false) String token,
-            @Valid @RequestBody LeaveRequestDto requestDto) {
+            @RequestBody LeaveRequestRequestDto requestDto) {
         try {
+            // Manual validation with custom response format
+            Map<String, Object> errors = validateLeaveRequest(requestDto);
+
+            if (!errors.isEmpty()) {
+                // Use LinkedHashMap to maintain insertion order
+                Map<String, Object> response = new LinkedHashMap<>();
+                response.put("code", "400");
+                response.put("status", "BAD_REQUEST");
+                response.put("errors", errors);
+
+                // Log the response for debugging
+                log.info("Validation error response: {}", response);
+
+                return ResponseEntity.badRequest().body(response);
+            }
+
             Long employeeId = getEmployeeIdFromRequest(token);
 
-            LeaveRequest leaveRequest = leaveRequestService.createLeaveRequest(employeeId, requestDto);
+            // Convert request DTO to service DTO with proper LocalDate fields
+            LeaveRequestDto serviceDto = new LeaveRequestDto();
+            serviceDto.setLeaveTypeId(requestDto.getLeaveTypeId());
+            serviceDto.setStartDateFromString(requestDto.getStartDate());
+            serviceDto.setEndDateFromString(requestDto.getEndDate());
+            serviceDto.setTotalDays(requestDto.getTotalDays());
+            serviceDto.setReason(requestDto.getReason());
+
+            LeaveRequest leaveRequest = leaveRequestService.createLeaveRequest(employeeId, serviceDto);
 
             // Create response DTO - remaining balance is already calculated in the entity
             LeaveRequestResponseDto responseDto = LeaveRequestResponseDto.fromLeaveRequest(leaveRequest, null);
@@ -75,6 +103,88 @@ public class LeaveRequestController {
             String errorMessage = e.getMessage() != null ? e.getMessage() : "Unknown error occurred";
             return ResponseEntity.badRequest().body(ApiResponse.error(errorMessage, 400));
         }
+    }
+
+    private Map<String, Object> validateLeaveRequest(LeaveRequestRequestDto requestDto) {
+        Map<String, Object> errors = new LinkedHashMap<>();
+
+        // Validate leaveTypeId
+        java.util.List<String> leaveTypeIdErrors = new java.util.ArrayList<>();
+        if (requestDto.getLeaveTypeId() == null) {
+            leaveTypeIdErrors.add("must be not null");
+        } else if (requestDto.getLeaveTypeId() <= 0) {
+            leaveTypeIdErrors.add("only number int");
+        }
+        if (!leaveTypeIdErrors.isEmpty()) {
+            errors.put("leaveTypeId", leaveTypeIdErrors.toArray(new String[0]));
+        }
+
+        // Validate startDate
+        LocalDate startDate = requestDto.getStartDateAsDate();
+        if (requestDto.getStartDate() == null || requestDto.getStartDate().trim().isEmpty()) {
+            errors.put("startDate", new String[]{"must be not null"});
+        } else if (startDate == null) {
+            // Invalid date format
+            errors.put("startDate", new String[]{"format not valid e.g 2025-10-11"});
+        } else {
+            java.util.List<String> startDateErrors = new java.util.ArrayList<>();
+            if (startDate.getYear() < 2000 || startDate.getYear() > 2100) {
+                startDateErrors.add("format not valid e.g 2025-10-11");
+            }
+            if (startDate.isBefore(LocalDate.now())) {
+                startDateErrors.add("must be today or future date");
+            }
+            if (!startDateErrors.isEmpty()) {
+                errors.put("startDate", startDateErrors.toArray(new String[0]));
+            }
+        }
+
+        // Validate endDate
+        LocalDate endDate = requestDto.getEndDateAsDate();
+        if (requestDto.getEndDate() == null || requestDto.getEndDate().trim().isEmpty()) {
+            errors.put("endDate", new String[]{"must be not null"});
+        } else if (endDate == null) {
+            // Invalid date format
+            errors.put("endDate", new String[]{"format not valid e.g 2025-10-11"});
+        } else {
+            java.util.List<String> endDateErrors = new java.util.ArrayList<>();
+            if (endDate.getYear() < 2000 || endDate.getYear() > 2100) {
+                endDateErrors.add("format not valid e.g 2025-10-11");
+            }
+            if (endDate.isBefore(LocalDate.now())) {
+                endDateErrors.add("must be today or future date");
+            }
+            if (!endDateErrors.isEmpty()) {
+                errors.put("endDate", endDateErrors.toArray(new String[0]));
+            }
+        }
+
+        // Validate date range if both dates are present and valid
+        if (startDate != null && endDate != null) {
+            java.util.List<String> dateRangeErrors = new java.util.ArrayList<>();
+
+            if (endDate.isBefore(startDate)) {
+                dateRangeErrors.add("must be after start date");
+            }
+
+            long daysBetween = java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate);
+            if (daysBetween > 365) {
+                dateRangeErrors.add("leave period cannot exceed 365 days");
+            }
+
+            if (!dateRangeErrors.isEmpty()) {
+                // Merge with existing endDate errors if any
+                java.util.List<String> existingEndDateErrors = new java.util.ArrayList<>();
+                if (errors.containsKey("endDate")) {
+                    String[] existing = (String[]) errors.get("endDate");
+                    existingEndDateErrors = new java.util.ArrayList<>(java.util.Arrays.asList(existing));
+                }
+                existingEndDateErrors.addAll(dateRangeErrors);
+                errors.put("endDate", existingEndDateErrors.toArray(new String[0]));
+            }
+        }
+
+        return errors;
     }
 
     @GetMapping("/my-requests")
