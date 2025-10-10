@@ -167,7 +167,7 @@ public class AttendanceController {
 
             var attendanceEntityOpt = attendanceRepository.findByUuid(uuid);
             if (attendanceEntityOpt.isEmpty()) {
-                throw new AttendanceException(AttendanceException.AttendanceErrorType.NOT_FOUND);
+                throw new AttendanceException(AttendanceException.AttendanceErrorType.NOT_FOUND, "Attendance data not found");
             }
 
             var attendanceEntity = attendanceEntityOpt.get();

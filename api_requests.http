@@ -77,7 +77,7 @@ Content-Type: application/json
 
 {
   "email": "supervisor@hris.com",
-  "password": "admin123."
+  "password": "admin123"
 }
 
 > {%
