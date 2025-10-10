@@ -275,22 +275,32 @@ public class GlobalExceptionHandler {
             LeaveRequestException ex, WebRequest request) {
         log.warn("Leave request business error: {}", ex.getMessage());
 
-        Map<String, Object> response = new HashMap<>();
+        // Determine HTTP status based on error type
+        HttpStatus httpStatus;
+        String errorLabel;
+
+        if (ex.getErrorType() == LeaveRequestException.LeaveErrorType.NOT_FOUND) {
+            httpStatus = HttpStatus.NOT_FOUND;
+            errorLabel = "Not Found";
+        } else {
+            httpStatus = HttpStatus.CONFLICT;
+            errorLabel = "Conflict";
+        }
+
+        Map<String, Object> response = new LinkedHashMap<>();
         response.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-        response.put("status", HttpStatus.CONFLICT.value());
-        response.put("error", "Conflict");
+        response.put("status", httpStatus.value());
+        response.put("error", errorLabel);
+        response.put("errorCode", ex.getErrorCode());
         response.put("message", ex.getMessage());
         response.put("path", request.getDescription(false).replace("uri=", ""));
 
-        // Add error code and details if available
-        if (ex.getErrorCode() != null) {
-            response.put("errorCode", ex.getErrorCode());
-        }
+        // Add details if available
         if (ex.getDetails() != null) {
             response.put("details", ex.getDetails());
         }
 
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+        return ResponseEntity.status(httpStatus).body(response);
     }
 
     @ExceptionHandler(LeaveRequestValidationException.class)
