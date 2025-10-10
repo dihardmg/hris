@@ -183,15 +183,22 @@ public class BusinessTravelController {
             BusinessTravelRequestResponseDto responseDto = BusinessTravelRequestResponseDto.fromBusinessTravelRequest(travelRequest);
 
             return ResponseEntity.ok(Map.of(
-                "data", responseDto,
-                "message", "Travel record retrieved successfully"
+                "code", 200,
+                "status", "OK",
+                "data", responseDto
             ));
 
-        } catch (Exception e) {
-            log.error("Get business travel request by UUID failed", e);
-            return ResponseEntity.badRequest().body(
-                Map.of("message", "Failed to get business travel request")
-            );
+        } catch (BusinessTravelRequestException e) {
+            log.warn("Business travel request not found: {}", e.getMessage());
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("timestamp", java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+            response.put("status", 404);
+            response.put("error", "Not Found");
+            response.put("errorCode", e.getErrorCode());
+            response.put("message", e.getMessage());
+            response.put("path", "api/business-travel/request/" + uuid);
+
+            return ResponseEntity.status(404).body(response);
         }
     }
 

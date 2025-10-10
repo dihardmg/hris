@@ -1290,7 +1290,7 @@ GET {{baseUrl}}/api/business-travel/request/{{businessTravelUuid}}
 Authorization: Bearer {{supervisorToken}}
 
 ### @name getNonExistentBusinessTravelRequestByUuid
-GET {{baseUrl}}/api/business-travel/request/4d5d4101-6fbe-408e-b473-884b620d3166
+GET {{baseUrl}}/api/business-travel/request/8c96147b-c368-4a0a-887b-2353431c87a6
 Authorization: Bearer {{token}}
 
 ### @name getCurrentBusinessTravel
