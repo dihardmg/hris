@@ -405,6 +405,47 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(response);
     }
 
+    @ExceptionHandler(PasswordUpdateException.class)
+    public ResponseEntity<Map<String, Object>> handlePasswordUpdateException(
+            PasswordUpdateException ex, WebRequest request) {
+        log.warn("Password update business error: {}", ex.getMessage());
+
+        // Determine HTTP status based on error type
+        HttpStatus httpStatus;
+        String errorLabel;
+
+        switch (ex.getErrorType()) {
+            case USER_NOT_FOUND:
+                httpStatus = HttpStatus.NOT_FOUND;
+                errorLabel = "Not Found";
+                break;
+            case INVALID_CURRENT_PASSWORD:
+                httpStatus = HttpStatus.UNAUTHORIZED;
+                errorLabel = "Unauthorized";
+                break;
+            case PASSWORDS_DO_NOT_MATCH:
+            case SAME_PASSWORD_AS_CURRENT:
+            case VALIDATION_FAILED:
+                httpStatus = HttpStatus.BAD_REQUEST;
+                errorLabel = "Bad Request";
+                break;
+            default:
+                httpStatus = HttpStatus.UNPROCESSABLE_ENTITY;
+                errorLabel = "Unprocessable Entity";
+                break;
+        }
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        response.put("status", httpStatus.value());
+        response.put("error", errorLabel);
+        response.put("errorCode", ex.getErrorCode());
+        response.put("message", ex.getMessage());
+        response.put("path", request.getDescription(false).replace("uri=", ""));
+
+        return ResponseEntity.status(httpStatus).body(response);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGlobalException(
             Exception ex, WebRequest request) {

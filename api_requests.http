@@ -11,11 +11,14 @@
 @baseUrl = http://{{hostname}}
 
 # --- AUTHENTICATION TOKENS (Update after login) ---
-@token = eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJtY3JkaWtAZ21haWwuY29tIiwiZW1wbG95ZWVJZCI6NDE0NiwiZW1wbG95ZWVDb2RlIjoiRU1QNjcxMzkiLCJ0aW1lem9uZSI6IkFzaWEvSmFrYXJ0YSIsImlhdCI6MTc2MDA3NDU1OCwiZXhwIjoxNzYwMTYwOTU4fQ.c9mclAqTTnApRAjZMCA7HnJCHeDdAVeUygpU57NIajqdxM0cnfB3H94egOtkPf9F5d88zWzMil808QW_ZqVUFA
+@token = eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJtY3JkaWtAZ21haWwuY29tIiwiZW1wbG95ZWVJZCI6NDE0NiwiZW1wbG95ZWVDb2RlIjoiRU1QNjcxMzkiLCJ0aW1lem9uZSI6IkFzaWEvSmFrYXJ0YSIsImlhdCI6MTc2MDMyOTUxNywiZXhwIjoxNzYwNDE1OTE3fQ.8oHupks_nh30NKfdos26Pe6dVAC96zZsXtr_a9f-p2Cc-fx0fjHMThd3K6n8P6dJhaBH5-ZDGu9y-2ZcbDGiGQ
+
 @adminToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 
-@supervisorToken = eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJzdXBlcnZpc29yQGhyaXMuY29tIiwiZW1wbG95ZWVJZCI6MywiZW1wbG95ZWVDb2RlIjoiU1VQMDAxIiwidGltZXpvbmUiOiJBc2lhL0pha2FydGEiLCJpYXQiOjE3NTk4MTQ5MTMsImV4cCI6MTc1OTkwMTMxM30.YEBEcCbl-jxymM9rb8g0q4C0iJWnFynENfyIdhZSynQT9k154cawMVIg8TCkp749
+@supervisorToken = eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJzdXBlcnZpc29yQGhyaXMuY29tIiwiZW1wbG95ZWVJZCI6MywiZW1wbG95ZWVDb2RlIjoiU1VQMDAxIiwidGltZXpvbmUiOiJBc2lhL0pha2FydGEiLCJpYXQiOjE3NjAwOTQwMDYsImV4cCI6MTc2MDE4MDQwNn0.AM_50DlN_n_ntUKvMLjjaTOd1JTQGv6l5aiA31ByxHC2cEjGCqAq3M6V6uZyFE6tPKWwdXc9mMCjddeGZ5tP_A
+
+
 # --- DYNAMIC VARIABLES (Update after creating resources) ---
 # Employee and Leave Type IDs are NUMERIC (1, 2, 3...)
 # Leave Request, Attendance, Business Travel IDs are UUIDs for security
@@ -25,7 +28,7 @@
 @maternityLeaveId = 3
 @attendanceUuid = 550e8400-e29b-41d4-a716-446655440000
 @leaveRequestUuid = a7e230e5-a616-4352-8914-4bda5c170f93
-@businessTravelUuid = 4d5d4101-6fbe-408e-b473-884b620d31e6
+@businessTravelUuid = 8c96147b-c368-4a0a-887b-2353431c87a6
 @passwordResetToken = your-reset-token-here
 
 ### =====================================================
@@ -223,7 +226,6 @@ Authorization: Bearer {{token}}
 {
   "latitude": -6.2088,
   "longitude": 106.8456,
-  "faceImage": "base64-encoded-face-image-data",
   "notes": "Regular work day"
 }
 
@@ -246,7 +248,6 @@ Authorization: Bearer {{token}}
 {
   "latitude": -6.3000,
   "longitude": 106.9000,
-  "faceImage": "base64-encoded-face-image-data",
   "notes": "Working from client location"
 }
 
@@ -1650,7 +1651,14 @@ Authorization: Bearer {{token}}
 # 2. Test with new password: loginEmployee
 # 3. Test security: requestPasswordResetInvalidEmail, resetPasswordWithWeakPassword
 
-# --- WORKFLOW 6: SECURITY & ERROR HANDLING ---
+# --- WORKFLOW 6: PASSWORD UPDATE WORKFLOW ---
+# 1. loginEmployee → updatePassword → verifySuccess
+# 2. Test security: updatePasswordWithInvalidCurrentPassword, updatePasswordWithMismatchedPasswords
+# 3. Test validation: updatePasswordWithWeakPassword, updatePasswordWithSameAsCurrent
+# 4. Test auth: updatePasswordWithoutAuth, updatePasswordWithInvalidToken
+# 5. Integration test: updatePasswordIntegrationTest → updatePasswordIntegrationTest2 → updatePasswordRevertTest
+
+# --- WORKFLOW 7: SECURITY & ERROR HANDLING ---
 # 1. Test unauthorized access: employeeAccessAdminEndpoint
 # 2. Test invalid tokens: invalidToken, expiredToken
 # 3. Test validation: submitLeaveRequestWithEmptyFields
@@ -1711,6 +1719,289 @@ Authorization: Bearer {{token}}
 # - Leave type management restricted to Admin/HR roles only
 # - HR quota management restricted to Admin/HR roles for create/update/delete operations
 # - Employees can only view their own HR quota; supervisors can view subordinates' quotas
+
+### =====================================================
+### 13. PASSWORD UPDATE ENDPOINTS
+### =====================================================
+
+### @name updatePassword
+PUT {{baseUrl}}/api/v1/users/password
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "currentPassword": "week123",
+  "newPassword": "NewPassword456!",
+  "confirmPassword": "NewPassword456!"
+}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ Password updated successfully!");
+    client.log("Message: " + response.body.message);
+    client.log("🔒 Password has been changed");
+  } else {
+    client.log("❌ Password update failed: " + response.body.message);
+  }
+%}
+
+### @name updatePasswordWithInvalidCurrentPassword
+PUT {{baseUrl}}/api/v1/users/password
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "currentPassword": "wrongPassword",
+  "newPassword": "NewPassword456!",
+  "confirmPassword": "NewPassword456!"
+}
+
+> {%
+  if (response.status === 401) {
+    client.log("✅ Invalid current password properly rejected!");
+    client.log("Error: " + response.body.message);
+  } else {
+    client.log("❌ Should return 401 for invalid current password, got: " + response.status);
+  }
+%}
+
+### @name updatePasswordWithMismatchedPasswords
+PUT {{baseUrl}}/api/v1/users/password
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "currentPassword": "week123",
+  "newPassword": "NewPassword456!",
+  "confirmPassword": "DifferentPassword456!"
+}
+
+> {%
+  if (response.status === 400) {
+    client.log("✅ Password mismatch properly rejected!");
+    client.log("Error: " + response.body.message);
+  } else {
+    client.log("❌ Should return 400 for password mismatch, got: " + response.status);
+  }
+%}
+
+### @name updatePasswordWithWeakPassword
+PUT {{baseUrl}}/api/v1/users/password
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "currentPassword": "week123",
+  "newPassword": "weak",
+  "confirmPassword": "weak"
+}
+
+> {%
+  if (response.status === 400) {
+    client.log("✅ Weak password properly rejected!");
+    client.log("Error: " + response.body.message);
+  } else {
+    client.log("❌ Should return 400 for weak password, got: " + response.status);
+  }
+%}
+
+### @name updatePasswordWithSameAsCurrent
+PUT {{baseUrl}}/api/v1/users/password
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "currentPassword": "week123",
+  "newPassword": "week123",
+  "confirmPassword": "week123"
+}
+
+> {%
+  if (response.status === 400) {
+    client.log("✅ Same password as current properly rejected!");
+    client.log("Error: " + response.body.message);
+  } else {
+    client.log("❌ Should return 400 for same password, got: " + response.status);
+  }
+%}
+
+### @name updatePasswordWithoutAuth
+PUT {{baseUrl}}/api/v1/users/password
+Content-Type: application/json
+
+{
+  "currentPassword": "week123",
+  "newPassword": "NewPassword456!",
+  "confirmPassword": "NewPassword456!"
+}
+
+> {%
+  if (response.status === 401) {
+    client.log("✅ Unauthorized request properly rejected!");
+  } else {
+    client.log("❌ Should return 401 for missing authorization, got: " + response.status);
+  }
+%}
+
+### @name updatePasswordWithInvalidToken
+PUT {{baseUrl}}/api/v1/users/password
+Content-Type: application/json
+Authorization: Bearer invalid-token-here
+
+{
+  "currentPassword": "week123",
+  "newPassword": "NewPassword456!",
+  "confirmPassword": "NewPassword456!"
+}
+
+> {%
+  if (response.status === 401) {
+    client.log("✅ Invalid token properly rejected!");
+  } else {
+    client.log("❌ Should return 401 for invalid token, got: " + response.status);
+  }
+%}
+
+### @name updatePasswordWithEmptyFields
+PUT {{baseUrl}}/api/v1/users/password
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "currentPassword": "",
+  "newPassword": "",
+  "confirmPassword": ""
+}
+
+> {%
+  if (response.status === 400) {
+    client.log("✅ Empty fields properly rejected!");
+    client.log("Error: " + response.body.message);
+  } else {
+    client.log("❌ Should return 400 for empty fields, got: " + response.status);
+  }
+%}
+
+### @name updatePasswordWithOnlyNewPassword
+PUT {{baseUrl}}/api/v1/users/password
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "newPassword": "NewPassword456!"
+}
+
+> {%
+  if (response.status === 400) {
+    client.log("✅ Missing current password properly rejected!");
+    client.log("Error: " + response.body.message);
+  } else {
+    client.log("❌ Should return 400 for missing current password, got: " + response.status);
+  }
+%}
+
+### @name updatePasswordWithInvalidJSON
+PUT {{baseUrl}}/api/v1/users/password
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "currentPassword": "week123",
+  "newPassword": "NewPassword456!",
+  "confirmPassword": "NewPassword456!",
+}
+
+> {%
+  if (response.status === 400) {
+    client.log("✅ Invalid JSON properly rejected!");
+  } else {
+    client.log("❌ Should return 400 for invalid JSON, got: " + response.status);
+  }
+%}
+
+### @name updatePasswordWithExpiredToken
+# This test simulates an expired token scenario
+# Note: You need to wait for token to expire or use a manually expired token
+PUT {{baseUrl}}/api/v1/users/password
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJleHBpcmVkIiwiaWF0IjoxNjAwMDAwMDAwLCJleHAiOjE2MDAwMDAwMDF9.invalid
+
+{
+  "currentPassword": "week123",
+  "newPassword": "NewPassword456!",
+  "confirmPassword": "NewPassword456!"
+}
+
+> {%
+  if (response.status === 401) {
+    client.log("✅ Expired token properly rejected!");
+    client.log("Error: " + response.body.message);
+  } else {
+    client.log("❌ Should return 401 for expired token, got: " + response.status);
+  }
+%}
+
+### @name updatePasswordIntegrationTest
+# Complete integration test for password update workflow
+# 1. First login to get a fresh token
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "mcrdik@gmail.com",
+  "password": "Welcome123!"
+}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ Login successful for password update test");
+    client.global.set("passwordUpdateToken", response.body.data.token);
+  } else {
+    client.log("❌ Login failed: " + response.body.message);
+  }
+%}
+
+### @name updatePasswordIntegrationTest2
+# 2. Update password with the fresh token
+PUT {{baseUrl}}/api/v1/users/password
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "currentPassword": "week123",
+  "newPassword": "UpdatedPassword789!",
+  "confirmPassword": "UpdatedPassword789!"
+}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ Password update integration test successful!");
+    client.log("Message: " + response.body.message);
+  } else {
+    client.log("❌ Password update integration test failed: " + response.body.message);
+  }
+%}
+
+### @name updatePasswordRevertTest
+# 3. Revert password back to original for continued testing
+PUT {{baseUrl}}/api/v1/users/password
+Content-Type: application/json
+Authorization: Bearer {{passwordUpdateToken}}
+
+{
+  "currentPassword": "Welcome123!",
+  "newPassword": "NewPassword12!",
+  "confirmPassword": "NewPassword12!"
+}
+
+> {%
+  if (response.status === 200) {
+    client.log("✅ Password reverted successfully!");
+    client.log("Original password restored for continued testing");
+  } else {
+    client.log("❌ Password revert failed: " + response.body.message);
+  }
+%}
 
 ### =====================================================
 ### END OF COMPREHENSIVE API TESTING SUITE

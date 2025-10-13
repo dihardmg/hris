@@ -91,8 +91,8 @@ public class AuthController {
         }
 
         try {
-            LoginResponse response = authenticationService.authenticateUser(loginRequest, clientIP);
-            return ResponseEntity.ok(ApiResponse.success(response, "Login successful"));
+            LoginResponse loginData = authenticationService.authenticateUser(loginRequest, clientIP);
+            return ResponseEntity.ok(ApiResponse.success(loginData, "Login successful"));
         } catch (Exception e) {
             rateLimitingService.recordFailedLogin(email);
             throw e;

@@ -10,26 +10,33 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ApiResponse<T> {
-    private T data;
+    private Integer code;
+    private String status;
     private String message;
+    private T data;
     private String error;
-    private Integer status;
 
     public static <T> ApiResponse<T> success(T data) {
         ApiResponse<T> response = new ApiResponse<>();
         response.setData(data);
+        response.setCode(200);
+        response.setStatus("OK");
         return response;
     }
 
     public static <T> ApiResponse<T> success(T data, String message) {
         ApiResponse<T> response = new ApiResponse<>();
         response.setData(data);
+        response.setCode(200);
+        response.setStatus("OK");
         response.setMessage(message);
         return response;
     }
 
     public static ApiResponse<Void> success(String message) {
         ApiResponse<Void> response = new ApiResponse<>();
+        response.setCode(200);
+        response.setStatus("OK");
         response.setMessage(message);
         return response;
     }
@@ -43,7 +50,8 @@ public class ApiResponse<T> {
     public static <T> ApiResponse<T> error(String message, int status) {
         ApiResponse<T> response = new ApiResponse<>();
         response.setError(message);
-        response.setStatus(status);
+        response.setCode(status);
+        response.setStatus("ERROR");
         return response;
     }
 

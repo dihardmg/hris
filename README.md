@@ -66,6 +66,7 @@ For secure environment configuration, see **[Environment Setup Guide](docs/ENVIR
 ### Authentication & Security
 - ✅ **JWT-based authentication** with secure token management (WIB timezone support)
 - ✅ **Password reset functionality** with secure token-based workflow
+- ✅ **Password update functionality** with current password verification
 - ✅ **Advanced rate limiting** with multi-layer protection:
   - Failed login limiting: 5 attempts per 5 minutes
   - Success login limiting: 5 per account, 20 per IP per 5 minutes
@@ -601,6 +602,93 @@ Verify reset token validity.
 {
   "valid": true,
   "message": "Token is valid"
+}
+```
+
+---
+
+## 🔐 Password Update Endpoints
+
+### PUT /api/v1/users/password
+Update user password with current password verification.
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Request:**
+```json
+{
+  "currentPassword": "oldPassword123",
+  "newPassword": "NewPassword456!",
+  "confirmPassword": "NewPassword456!"
+}
+```
+
+**Password Requirements:**
+- Minimum 8 characters
+- At least 1 uppercase letter
+- At least 1 lowercase letter
+- At least 1 digit
+- At least 1 special character (!@#$%^&*()_+-=[]{};':"\\|,.<>/?)
+- Cannot be the same as current password
+
+**Success Response (200 OK):**
+```json
+{
+  "data": null,
+  "message": "Password updated successfully"
+}
+```
+
+**Error Responses:**
+
+**Invalid Current Password (401 Unauthorized):**
+```json
+{
+  "timestamp": "2025-01-15T10:30:00Z",
+  "status": 401,
+  "error": "Unauthorized",
+  "errorCode": "INVALID_CURRENT_PASSWORD",
+  "message": "Current password is incorrect",
+  "path": "/api/v1/users/password"
+}
+```
+
+**Password Validation Failed (400 Bad Request):**
+```json
+{
+  "timestamp": "2025-01-15T10:30:00Z",
+  "status": 400,
+  "error": "Bad Request",
+  "errorCode": "PASSWORDS_DO_NOT_MATCH",
+  "message": "New password and confirmation must match",
+  "path": "/api/v1/users/password"
+}
+```
+
+**Same Password as Current (400 Bad Request):**
+```json
+{
+  "timestamp": "2025-01-15T10:30:00Z",
+  "status": 400,
+  "error": "Bad Request",
+  "errorCode": "SAME_PASSWORD_AS_CURRENT",
+  "message": "New password must be different from current password",
+  "path": "/api/v1/users/password"
+}
+```
+
+**Validation Errors (400 Bad Request):**
+```json
+{
+  "code": "400",
+  "status": "BAD_REQUEST",
+  "errors": {
+    "newPassword": [
+      "Password must be at least 8 characters",
+      "Password must contain at least one uppercase letter",
+      "Password must contain at least one special character"
+    ]
+  }
 }
 ```
 
@@ -1321,6 +1409,7 @@ Debug password verification (development only).
 | Endpoint | EMPLOYEE | SUPERVISOR | HR | ADMIN |
 |----------|----------|------------|----|-------|
 | /api/auth/* | ✅ | ✅ | ✅ | ✅ |
+| /api/v1/users/password | ✅ | ✅ | ✅ | ✅ |
 | /api/attendance/* | ✅ | ✅ | ✅ | ✅ |
 | /api/leave/request | ✅ | ✅ | ✅ | ✅ |
 | /api/leave/my-requests | ✅ | ✅ | ✅ | ✅ |
@@ -1885,6 +1974,7 @@ The API provides comprehensive error handling:
 - ✅ **Role-based access** ensures proper authorization
 - ✅ **Password encryption** protects credentials
 - ✅ **JWT validation** prevents token tampering
+- ✅ **Password update security** with current password verification
 - ✅ **Password reset security** with token expiration and rate limiting
 - ✅ **Email enumeration protection** in password reset flow
 - ✅ **Password history enforcement** prevents password reuse
